@@ -1,4 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 // ─── Colour palette ────────────────────────────────────────────────────────────
 const C = {
@@ -134,6 +138,191 @@ const TRENDING = [
 ];
 
 // ─── Small UI ─────────────────────────────────────────────────────────────────
+const WARDROBE_IMAGES = [WA(1), WA(3), WA(8), WA(13), WA(18), WA(25), WA(27), WA(30)];
+
+function ImmersiveWardrobeHero() {
+  const sectionRef = useRef(null);
+  const introRef = useRef(null);
+  const stageRef = useRef(null);
+  const leftDoorRef = useRef(null);
+  const rightDoorRef = useRef(null);
+  const wardrobeRef = useRef(null);
+  const galleryRef = useRef(null);
+  const railRef = useRef(null);
+  const titleRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!sectionRef.current) return;
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ctx = gsap.context(() => {
+      if (reduceMotion) {
+        gsap.set([leftDoorRef.current, rightDoorRef.current], { autoAlpha: 0 });
+        gsap.set([wardrobeRef.current, galleryRef.current, railRef.current, titleRef.current], { clearProps: "all" });
+        return;
+      }
+
+      gsap.set(stageRef.current, { perspective: 1800 });
+      gsap.set(leftDoorRef.current, { transformOrigin: "left center", rotateY: 0 });
+      gsap.set(rightDoorRef.current, { transformOrigin: "right center", rotateY: 0 });
+      gsap.set(wardrobeRef.current, { xPercent: -50, scale: 0.72, z: -260, autoAlpha: 0.42, filter: "blur(8px)" });
+      gsap.set(galleryRef.current, { xPercent: -50 });
+      gsap.set(galleryRef.current?.children || [], { y: 90, autoAlpha: 0 });
+      gsap.set(railRef.current, { scaleX: 0.16, autoAlpha: 0.3, transformOrigin: "center center" });
+
+      const tl = gsap.timeline({
+        defaults: { ease: "power2.inOut" },
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=260%",
+          scrub: 1,
+          pin: true,
+          anticipatePin: 1,
+        },
+      });
+
+      tl
+        .to(introRef.current, { y: -58, autoAlpha: 0, duration: 0.8 }, 0)
+        .to(leftDoorRef.current, { rotateY: -112, xPercent: -7, duration: 1.8 }, 0.16)
+        .to(rightDoorRef.current, { rotateY: 112, xPercent: 7, duration: 1.8 }, 0.16)
+        .to(wardrobeRef.current, { scale: 1, z: 0, autoAlpha: 1, filter: "blur(0px)", duration: 1.7 }, 0.28)
+        .to(railRef.current, { scaleX: 1, autoAlpha: 1, duration: 1.1 }, 0.72)
+        .to(galleryRef.current?.children || [], {
+          y: 0,
+          autoAlpha: 1,
+          stagger: 0.08,
+          duration: 1.1,
+          ease: "power3.out",
+        }, 0.82)
+        .to(titleRef.current, { y: -24, autoAlpha: 1, duration: 0.9 }, 1.05)
+        .to(galleryRef.current, { xPercent: -54, duration: 1.8, ease: "none" }, 1.55)
+        .to(wardrobeRef.current, { scale: 1.08, duration: 1.8, ease: "none" }, 1.55);
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="relative h-screen overflow-hidden bg-[#07100d] text-[#f7f0e5]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(204,160,86,.32)_0%,rgba(22,64,52,.58)_31%,rgba(7,16,13,.98)_72%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(5,9,8,.94),rgba(16,49,40,.28)_38%,rgba(99,54,28,.34)_72%,rgba(5,8,7,.96))]" />
+      <div className="absolute left-1/2 top-1/2 h-[92vmin] w-[92vmin] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9b976]/10" />
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 to-transparent" />
+      <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(90deg,rgba(255,255,255,.16)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,.10)_1px,transparent_1px)] [background-size:86px_86px]" />
+
+      <div className="pointer-events-none absolute left-6 top-6 z-40 hidden font-sans text-[0.58rem] uppercase tracking-[0.38em] text-[#e0c58b]/75 sm:block">
+        Roudah Atelier
+      </div>
+      <div className="pointer-events-none absolute right-6 top-6 z-40 hidden font-sans text-[0.58rem] uppercase tracking-[0.38em] text-[#e0c58b]/75 sm:block">
+        Collection Preview
+      </div>
+
+      <div className="pointer-events-none absolute -left-8 bottom-10 top-[18vh] z-0 hidden w-[19vw] max-w-[250px] overflow-hidden border border-[#d9b976]/18 opacity-55 shadow-[0_30px_80px_rgba(0,0,0,.48)] md:block">
+        <Img
+          file={WA(25)}
+          fallbackSeed="hero-edge-left"
+          w={320}
+          h={640}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: "saturate(.9) contrast(1.04)" }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,16,13,.15),rgba(7,16,13,.78))]" />
+      </div>
+
+      <div className="pointer-events-none absolute -right-8 bottom-[16vh] top-[12vh] z-0 hidden w-[18vw] max-w-[235px] overflow-hidden border border-[#d9b976]/18 opacity-50 shadow-[0_30px_80px_rgba(0,0,0,.48)] md:block">
+        <Img
+          file={WA(13)}
+          fallbackSeed="hero-edge-right"
+          w={320}
+          h={640}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: "saturate(.9) contrast(1.04)" }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(7,16,13,.15),rgba(7,16,13,.78))]" />
+      </div>
+
+      <div ref={stageRef} className="relative z-10 flex h-full items-center justify-center px-4 py-8 sm:px-8">
+        <div ref={wardrobeRef} className="absolute left-1/2 top-[9vh] h-[80vh] w-[min(calc(100vw-1.5rem),80rem)] -translate-x-1/2 overflow-hidden rounded-t-[42vw] border border-[#d9b976]/35 bg-[#14251e] shadow-[0_50px_150px_rgba(0,0,0,.62)] sm:w-[min(calc(100vw-4rem),80rem)] lg:rounded-t-[28rem]">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,18,14,.98),rgba(23,70,56,.62)_18%,rgba(246,225,188,.13)_50%,rgba(91,52,28,.52)_82%,rgba(7,18,14,.98))]" />
+          <div className="absolute inset-4 rounded-t-[40vw] border border-[#d9b976]/15 lg:rounded-t-[27rem]" />
+          <div className="absolute left-1/2 top-0 h-full w-px bg-[#d4a85e]/40" />
+          <div className="absolute inset-x-[7%] top-[13%] h-px bg-[#d4a85e]/35" />
+          <div ref={railRef} className="absolute left-[10%] right-[10%] top-[24%] h-[2px] bg-[#d4a85e] shadow-[0_0_24px_rgba(212,168,94,.55)]" />
+
+          <div ref={titleRef} className="absolute left-1/2 top-[8%] z-20 w-[min(88vw,760px)] -translate-x-1/2 translate-y-8 text-center opacity-0">
+            <p className="mb-3 font-sans text-[0.58rem] uppercase tracking-[0.46em] text-[#d4a85e]">Private Wardrobe</p>
+            <h1 className="font-serif text-[clamp(2.4rem,8vw,7.5rem)] font-light uppercase leading-[0.9] tracking-[0.08em]">Roudah</h1>
+          </div>
+
+          <div ref={galleryRef} className="absolute bottom-[8%] left-1/2 flex w-[min(112vw,1120px)] -translate-x-1/2 items-end justify-center gap-3 sm:gap-5">
+            {WARDROBE_IMAGES.map((file, i) => (
+              <div
+                key={file}
+                className="relative shrink-0 overflow-hidden border border-[#e3bd74]/25 bg-[#120d09] shadow-[0_24px_50px_rgba(0,0,0,.42)]"
+                style={{
+                  width: i % 3 === 0 ? "min(24vw, 280px)" : "min(20vw, 230px)",
+                  height: i % 2 === 0 ? "min(48vh, 520px)" : "min(40vh, 440px)",
+                }}
+              >
+                <Img
+                  file={file}
+                  fallbackSeed={`wardrobe-${i}`}
+                  w={420}
+                  h={620}
+                  alt=""
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(12,8,5,.58),transparent_58%)]" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div ref={leftDoorRef} className="absolute left-1/2 top-[9vh] z-30 h-[80vh] w-[min(46vw,630px)] -translate-x-full overflow-hidden rounded-tl-[42vw] border border-[#b8894c]/80 bg-[#2b1b12] shadow-[inset_-42px_0_80px_rgba(0,0,0,.42),0_36px_90px_rgba(0,0,0,.46)] [transform-style:preserve-3d] lg:rounded-tl-[28rem]">
+          <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(255,221,166,.10),transparent_28%,rgba(0,0,0,.32)),repeating-linear-gradient(90deg,rgba(255,255,255,.035)_0_1px,transparent_1px_28px)]" />
+          <div className="absolute inset-5 rounded-tl-[38vw] border border-[#e1bd77]/35 lg:rounded-tl-[25rem]" />
+          <div className="absolute inset-x-10 bottom-10 top-[18%] border border-[#120c08]/45 bg-[linear-gradient(135deg,rgba(255,226,177,.11),transparent_38%,rgba(0,0,0,.26))]" />
+          <div className="absolute right-0 top-0 h-full w-px bg-[#f0d69a]/55" />
+          <div className="absolute right-6 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#d5a764] shadow-[0_0_22px_rgba(213,167,100,.72)]" />
+        </div>
+
+        <div ref={rightDoorRef} className="absolute right-1/2 top-[9vh] z-30 h-[80vh] w-[min(46vw,630px)] translate-x-full overflow-hidden rounded-tr-[42vw] border border-[#b8894c]/80 bg-[#2b1b12] shadow-[inset_42px_0_80px_rgba(0,0,0,.42),0_36px_90px_rgba(0,0,0,.46)] [transform-style:preserve-3d] lg:rounded-tr-[28rem]">
+          <div className="absolute inset-0 bg-[linear-gradient(255deg,rgba(255,221,166,.10),transparent_28%,rgba(0,0,0,.32)),repeating-linear-gradient(90deg,rgba(255,255,255,.035)_0_1px,transparent_1px_28px)]" />
+          <div className="absolute inset-5 rounded-tr-[38vw] border border-[#e1bd77]/35 lg:rounded-tr-[25rem]" />
+          <div className="absolute inset-x-10 bottom-10 top-[18%] border border-[#120c08]/45 bg-[linear-gradient(225deg,rgba(255,226,177,.11),transparent_38%,rgba(0,0,0,.26))]" />
+          <div className="absolute left-0 top-0 h-full w-px bg-[#f0d69a]/55" />
+          <div className="absolute left-6 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#d5a764] shadow-[0_0_22px_rgba(213,167,100,.72)]" />
+        </div>
+
+        <div ref={introRef} className="relative z-40 mx-auto flex max-w-4xl flex-col items-center px-4 text-center">
+          <div className="mb-6 flex items-center gap-4 font-sans text-[0.56rem] uppercase tracking-[0.45em] text-[#e0c58b]">
+            <span className="h-px w-10 bg-[#e0c58b]/60" />
+            <span>Open the cupboard</span>
+            <span className="h-px w-10 bg-[#e0c58b]/60" />
+          </div>
+          <h2 className="max-w-4xl font-serif text-[clamp(2.8rem,8.6vw,8.8rem)] font-light uppercase leading-[0.86] tracking-[0.06em] drop-shadow-[0_18px_34px_rgba(0,0,0,.48)]">
+            The Hidden<br />Wardrobe
+          </h2>
+          <p className="mt-7 max-w-xl font-sans text-[0.78rem] font-light uppercase leading-7 tracking-[0.28em] text-[#ead9b9]/82">
+            A private reveal of Roudah silhouettes, textures, and ceremonial detail.
+          </p>
+          <div className="mt-8 flex items-center gap-3 text-[#e0c58b]/80">
+            <span className="h-2 w-2 rotate-45 border border-current" />
+            <span className="font-sans text-[0.55rem] uppercase tracking-[0.38em]">Scroll to enter</span>
+            <span className="h-2 w-2 rotate-45 border border-current" />
+          </div>
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-3 font-sans text-[0.55rem] uppercase tracking-[0.35em] text-[#d4a85e]">
+        <span>Scroll</span>
+        <span className="h-12 w-px bg-gradient-to-b from-[#d4a85e] to-transparent" />
+      </div>
+    </section>
+  );
+}
+
 function Chip({ children, active, onClick }) {
   const [hov, setHov] = useState(false);
   return (
@@ -453,16 +642,13 @@ function CinematicAbout() {
 // ─── Main ──────────────────────────────────────────────────────────────────────
 export default function Roudah() {
   const [scrolled,       setScrolled]       = useState(false);
-  const [activeCategory, setActiveCategory] = useState("All");
   const [mobileOpen,     setMobileOpen]     = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [heroParallax,   setHeroParallax]   = useState(0);
 
   useEffect(() => {
     const fn = () => {
       const y = window.scrollY;
       setScrolled(y > 55);
-      setHeroParallax(y * 0.35);
       const max = document.body.scrollHeight - window.innerHeight;
       setScrollProgress(max > 0 ? (y / max) * 100 : 0);
     };
@@ -537,61 +723,7 @@ export default function Roudah() {
       )}
 
       {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
-      <section style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1fr 1fr", backgroundColor: C.white }} className="r-hero">
-        {/* Image side — parallax */}
-        <div style={{ position: "relative", overflow: "hidden", minHeight: "600px" }}>
-          <Img file={WA(2)} fallbackSeed="roudah-hero" w={800} h={1100}
-            style={{ width: "100%", height: "115%", objectFit: "cover", objectPosition: "center top", transform: `translateY(${heroParallax}px)`, willChange: "transform" }} />
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "50%", background: `linear-gradient(to top, ${C.espresso}f0, transparent)` }} />
-          {/* Season badge */}
-          <div style={{ position: "absolute", top: "1.75rem", right: "1.75rem", backgroundColor: C.terracotta, padding: "0.35rem 0.85rem", animation: "scaleIn 600ms ease both 1.2s", opacity: 0 }}>
-            <p style={{ color: C.white, fontSize: "0.55rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial" }}>SS 2025</p>
-          </div>
-          {/* Save count */}
-          <div style={{ position: "absolute", top: "1.75rem", left: "1.75rem", backgroundColor: "rgba(26,26,24,0.62)", padding: "0.4rem 0.75rem", display: "flex", alignItems: "center", gap: "6px", animation: "scaleIn 600ms ease both 1.4s", opacity: 0 }}>
-            <span style={{ color: C.gold, fontSize: "0.7rem", animation: "pulseGold 2.5s ease infinite" }}>✦</span>
-            <span style={{ color: C.white, fontSize: "0.58rem", fontFamily: "Arial", letterSpacing: "0.08em" }}>2,847 saves</span>
-          </div>
-          {/* Floating product card */}
-          <div style={{ position: "absolute", bottom: "2.25rem", left: "1.75rem", backgroundColor: C.white, padding: "1rem 1.4rem", borderLeft: `3px solid ${C.gold}`, maxWidth: "210px", animation: "fadeUp 800ms ease both 1.6s", opacity: 0 }}>
-            <p style={{ color: C.copper, fontSize: "0.55rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.3rem" }}>Featured Piece</p>
-            <p style={{ color: C.espresso, fontFamily: "Georgia,serif", fontSize: "0.9rem", marginBottom: "0.2rem", fontWeight: 300 }}>The Pearl Cape</p>
-            <p style={{ color: C.gold, fontSize: "0.85rem", fontFamily: "Georgia,serif" }}>R 8,200</p>
-          </div>
-        </div>
-
-        {/* Text side */}
-        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", padding: "5rem 4rem", backgroundColor: C.cream }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", marginBottom: "2rem", animation: "fadeRight 900ms ease both 0.3s", opacity: 0 }}>
-            <div style={{ width: "28px", height: "1px", backgroundColor: C.gold }} />
-            <p style={{ color: C.gold, fontSize: "0.56rem", letterSpacing: "0.38em", textTransform: "uppercase", fontFamily: "Arial", fontWeight: 300 }}>New Collection — 2025</p>
-          </div>
-          <h1 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(2.2rem,5vw,4rem)", color: C.espresso, fontWeight: 300, letterSpacing: "0.1em", textTransform: "uppercase", lineHeight: 1.15, marginBottom: "1.5rem", animation: "fadeRight 1s ease both 0.55s", opacity: 0 }}>
-            A Place<br />of Quiet<br />Beauty
-          </h1>
-          <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", color: C.copper, fontSize: "0.88rem", lineHeight: 1.8, marginBottom: "2.5rem", maxWidth: "340px", animation: "fadeRight 1s ease both 0.75s", opacity: 0 }}>
-            "Crafted for the woman who moves through the world with intention"
-          </p>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "2.5rem", animation: "fadeRight 1s ease both 0.95s", opacity: 0 }}>
-            {["All","Abayas","Capes","Gowns","Sets"].map(cat => (
-              <Chip key={cat} active={activeCategory === cat} onClick={() => setActiveCategory(cat)}>{cat}</Chip>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: "0.85rem", flexWrap: "wrap", animation: "fadeRight 900ms ease both 1.1s", opacity: 0 }}>
-            <HeroBtn filled>Explore Collection</HeroBtn>
-            <HeroBtn>Our Story</HeroBtn>
-          </div>
-          <div style={{ display: "flex", gap: "2.5rem", marginTop: "3rem", paddingTop: "2rem", borderTop: "1px solid rgba(192,171,140,0.28)", animation: "fadeUp 900ms ease both 1.3s", opacity: 0 }}>
-            {[["847+","Pieces Saved"],["100%","Natural Fabrics"],["Atelier","Handcrafted"]].map(([n,l]) => (
-              <div key={l}>
-                <p style={{ fontFamily: "Georgia,serif", fontSize: "1.3rem", color: C.espresso, fontWeight: 300, marginBottom: "0.2rem" }}>{n}</p>
-                <p style={{ color: C.copper, fontSize: "0.55rem", letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "Arial" }}>{l}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      <ImmersiveWardrobeHero />
       {/* ══ STORY CIRCLES ═══════════════════════════════════════════════════════ */}
       <section style={{ backgroundColor: C.white, padding: "2rem 2.5rem 0", borderBottom: `1px solid rgba(192,171,140,0.2)` }}>
         <div style={{ display: "flex", gap: "1.85rem", overflowX: "auto", paddingBottom: "1.75rem" }}>
