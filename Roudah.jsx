@@ -1,697 +1,60 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, NavLink, Link, useLocation } from "react-router-dom";
+import { C, WA, Img, Reveal } from "./src/shared.jsx";
+import Home       from "./src/pages/Home.jsx";
+import Collection from "./src/pages/Collection.jsx";
+import About      from "./src/pages/About.jsx";
+import Contact    from "./src/pages/Contact.jsx";
 
-gsap.registerPlugin(ScrollTrigger);
-
-// ─── Colour palette ────────────────────────────────────────────────────────────
-const C = {
-  cream:      "#EDE8DF",
-  parchment:  "#E4DDD2",
-  sand:       "#C0AB8C",
-  sage:       "#6B7048",
-  charcoal:   "#1A1A18",
-  terracotta: "#B85428",
-  espresso:   "#3E1C0A",
-  gold:       "#C8961C",
-  forest:     "#253420",
-  marble:     "#16161C",
-  copper:     "#8A4428",
-  white:      "#F8F4EE",
-};
-
-// ─── Image helper ──────────────────────────────────────────────────────────────
-const WA = (n) => `IMG-20260526-WA${String(n).padStart(4,"0")}.jpg`;
-
-function Img({ file, fallbackSeed, w = 600, h = 800, style = {}, alt = "" }) {
-  return (
-    <img
-      src={`/images/${file}`}
-      alt={alt}
-      onError={e => { e.target.onerror = null; e.target.src = `https://picsum.photos/seed/${fallbackSeed}/${w}/${h}`; }}
-      style={{ display: "block", ...style }}
-    />
-  );
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
 }
 
-// ─── Hooks ─────────────────────────────────────────────────────────────────────
-function useReveal(threshold = 0.12) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) setVisible(true); },
-      { threshold }
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  return [ref, visible];
-}
-
-function useCountUp(target, duration = 2000, shouldStart = false) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!shouldStart) return;
-    let start = null;
-    const tick = (ts) => {
-      if (!start) start = ts;
-      const p = Math.min((ts - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - p, 3);
-      setCount(Math.round(ease * target));
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [shouldStart, target, duration]);
-  return count;
-}
-
-// ─── Reveal wrapper ────────────────────────────────────────────────────────────
-function Reveal({ children, dir = "bottom", delay = 0, style: extStyle = {} }) {
-  const [ref, visible] = useReveal();
-  const transforms = {
-    bottom: "translateY(48px)",
-    left:   "translateX(-48px)",
-    right:  "translateX(48px)",
-    scale:  "scale(0.92)",
-  };
-  return (
-    <div ref={ref} style={{
-      opacity: visible ? 1 : 0,
-      transform: visible ? "none" : transforms[dir],
-      transition: `opacity 900ms cubic-bezier(.22,1,.36,1) ${delay}ms, transform 900ms cubic-bezier(.22,1,.36,1) ${delay}ms`,
-      willChange: "opacity, transform",
-      ...extStyle,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-// ─── Stat counter ──────────────────────────────────────────────────────────────
-function StatCounter({ target, suffix = "", label }) {
-  const [ref, visible] = useReveal(0.3);
-  const count = useCountUp(target, 2200, visible);
-  return (
-    <div ref={ref} style={{ textAlign: "center" }}>
-      <p style={{ fontFamily: "Georgia,serif", fontSize: "clamp(2.2rem,4vw,3.2rem)", color: C.white, fontWeight: 300, letterSpacing: "0.04em" }}>
-        {count.toLocaleString()}{suffix}
-      </p>
-      <p style={{ color: C.sand, fontSize: "0.55rem", letterSpacing: "0.32em", textTransform: "uppercase", fontFamily: "Arial", marginTop: "0.65rem", opacity: 0.75 }}>{label}</p>
-    </div>
-  );
-}
-
-// ─── Pin / product data ────────────────────────────────────────────────────────
-const PINS = [
-  { type: "product", file: WA(0),  fallback: "p1", name: "The Sahara Cape",       fabric: "Sage Silk · Hand-embroidered",   price: "R 4,850", tag: "New Arrival", saves: 847,  scarcity: "Only 3 left"    },
-  { type: "quote",   text: '"Dressed with intention."',                            bg: C.terracotta, textColor: C.white },
-  { type: "product", file: WA(1),  fallback: "p2", name: "Noor Embroidered Abaya",fabric: "Forest Linen · Floral beadwork", price: "R 6,200", tag: "Bestseller",  saves: 1243, scarcity: "Only 2 left"    },
-  { type: "product", file: WA(13), fallback: "p3", name: "Al Rimal Floral Abaya", fabric: "Ivory Organza · Hand-stitched",  price: "R 7,450", tag: "Limited",     saves: 632,  scarcity: "Last piece"     },
-  { type: "tag",     color: C.sage,    label: "The Oasis Edit", subtitle: "2025 Collection"             },
-  { type: "product", file: WA(3),  fallback: "p4", name: "The Oasis Silhouette",  fabric: "Pearl Crepe · Veil overlay",    price: "R 8,100", tag: "Exclusive",   saves: 934,  scarcity: "Only 2 left"    },
-  { type: "product", file: WA(18), fallback: "p5", name: "The Velvet Co-ord",     fabric: "Chocolate Crepe · Beaded trim", price: "R 5,600", tag: "New Arrival", saves: 521,  scarcity: "Only 4 left"    },
-  { type: "quote",   text: '"Every piece begins as a feeling."',                   bg: C.charcoal, textColor: C.sand },
-  { type: "product", file: WA(20), fallback: "p6", name: "Dusk Wrap in Mocha",    fabric: "Duchess Satin · Crystal fringe",price: "R 5,300", tag: "Limited",     saves: 412,  scarcity: "Limited pieces" },
-  { type: "product", file: WA(25), fallback: "p7", name: "Layla Satin Abaya",     fabric: "Taupe Charmeuse · Bell cuff",   price: "R 3,950", tag: "Bestseller",  saves: 1089, scarcity: "Only 3 left"    },
-  { type: "tag",     color: C.espresso, label: "Handcrafted",    subtitle: "Each piece individually tagged" },
-  { type: "product", file: WA(27), fallback: "p8", name: "The Ivory Cape Set",    fabric: "Ivory Satin · Gold tassel tie", price: "R 6,900", tag: "New Arrival", saves: 728,  scarcity: "Only 5 left"    },
-];
-
-const CATEGORIES = [
-  { label: "Abayas",   file: WA(1)  },
-  { label: "Capes",    file: WA(2)  },
-  { label: "Gowns",    file: WA(0)  },
-  { label: "Sets",     file: WA(18) },
-  { label: "Wraps",    file: WA(20) },
-  { label: "Lookbook", file: WA(4)  },
-  { label: "New In",   file: WA(27) },
-];
-
-const TRENDING = [
-  { file: WA(8),  fallback: "t1", name: "Al Rimal Desert Abaya",  price: "R 5,200", tag: "New Arrival" },
-  { file: WA(15), fallback: "t2", name: "Garden Hour Abaya",       price: "R 4,600", tag: "Bestseller"  },
-  { file: WA(1),  fallback: "t3", name: "Noor Embroidered Abaya",  price: "R 6,200", tag: "Limited"     },
-  { file: WA(25), fallback: "t4", name: "Layla Satin Abaya",       price: "R 3,950", tag: "Bestseller"  },
-  { file: WA(27), fallback: "t5", name: "The Ivory Cape Set",      price: "R 6,900", tag: "New Arrival" },
-  { file: WA(13), fallback: "t6", name: "Al Rimal Floral Abaya",   price: "R 7,450", tag: "Limited"     },
-];
-
-// ─── Small UI ─────────────────────────────────────────────────────────────────
-const WARDROBE_IMAGES = [WA(1), WA(3), WA(8), WA(13), WA(18), WA(25), WA(27), WA(30)];
-
-function ImmersiveWardrobeHero() {
-  const sectionRef = useRef(null);
-  const introRef = useRef(null);
-  const stageRef = useRef(null);
-  const leftDoorRef = useRef(null);
-  const rightDoorRef = useRef(null);
-  const wardrobeRef = useRef(null);
-  const galleryRef = useRef(null);
-  const railRef = useRef(null);
-  const titleRef = useRef(null);
-
-  useLayoutEffect(() => {
-    if (!sectionRef.current) return;
-
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ctx = gsap.context(() => {
-      if (reduceMotion) {
-        gsap.set([leftDoorRef.current, rightDoorRef.current], { autoAlpha: 0 });
-        gsap.set([wardrobeRef.current, galleryRef.current, railRef.current, titleRef.current], { clearProps: "all" });
-        return;
-      }
-
-      gsap.set(stageRef.current, { perspective: 1800 });
-      gsap.set(leftDoorRef.current, { transformOrigin: "left center", rotateY: 0 });
-      gsap.set(rightDoorRef.current, { transformOrigin: "right center", rotateY: 0 });
-      gsap.set(wardrobeRef.current, { xPercent: -50, scale: 0.72, z: -260, autoAlpha: 0.42, filter: "blur(8px)" });
-      gsap.set(galleryRef.current, { xPercent: -50 });
-      gsap.set(galleryRef.current?.children || [], { y: 90, autoAlpha: 0 });
-      gsap.set(railRef.current, { scaleX: 0.16, autoAlpha: 0.3, transformOrigin: "center center" });
-
-      const tl = gsap.timeline({
-        defaults: { ease: "power2.inOut" },
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top top",
-          end: "+=260%",
-          scrub: 1,
-          pin: true,
-          anticipatePin: 1,
-        },
-      });
-
-      tl
-        .to(introRef.current, { y: -58, autoAlpha: 0, duration: 0.8 }, 0)
-        .to(leftDoorRef.current, { rotateY: -112, xPercent: -7, duration: 1.8 }, 0.16)
-        .to(rightDoorRef.current, { rotateY: 112, xPercent: 7, duration: 1.8 }, 0.16)
-        .to(wardrobeRef.current, { scale: 1, z: 0, autoAlpha: 1, filter: "blur(0px)", duration: 1.7 }, 0.28)
-        .to(railRef.current, { scaleX: 1, autoAlpha: 1, duration: 1.1 }, 0.72)
-        .to(galleryRef.current?.children || [], {
-          y: 0,
-          autoAlpha: 1,
-          stagger: 0.08,
-          duration: 1.1,
-          ease: "power3.out",
-        }, 0.82)
-        .to(titleRef.current, { y: -24, autoAlpha: 1, duration: 0.9 }, 1.05)
-        .to(galleryRef.current, { xPercent: -54, duration: 1.8, ease: "none" }, 1.55)
-        .to(wardrobeRef.current, { scale: 1.08, duration: 1.8, ease: "none" }, 1.55);
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
-
-  return (
-    <section ref={sectionRef} className="relative h-screen overflow-hidden bg-[#07100d] text-[#f7f0e5]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(204,160,86,.32)_0%,rgba(22,64,52,.58)_31%,rgba(7,16,13,.98)_72%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(5,9,8,.94),rgba(16,49,40,.28)_38%,rgba(99,54,28,.34)_72%,rgba(5,8,7,.96))]" />
-      <div className="absolute left-1/2 top-1/2 h-[92vmin] w-[92vmin] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#d9b976]/10" />
-      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/45 to-transparent" />
-      <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(90deg,rgba(255,255,255,.16)_1px,transparent_1px),linear-gradient(0deg,rgba(255,255,255,.10)_1px,transparent_1px)] [background-size:86px_86px]" />
-
-      <div className="pointer-events-none absolute left-6 top-6 z-40 hidden font-sans text-[0.58rem] uppercase tracking-[0.38em] text-[#e0c58b]/75 sm:block">
-        Roudah Atelier
-      </div>
-      <div className="pointer-events-none absolute right-6 top-6 z-40 hidden font-sans text-[0.58rem] uppercase tracking-[0.38em] text-[#e0c58b]/75 sm:block">
-        Collection Preview
-      </div>
-
-      <div className="pointer-events-none absolute -left-8 bottom-10 top-[18vh] z-0 hidden w-[19vw] max-w-[250px] overflow-hidden border border-[#d9b976]/18 opacity-55 shadow-[0_30px_80px_rgba(0,0,0,.48)] md:block">
-        <Img
-          file={WA(25)}
-          fallbackSeed="hero-edge-left"
-          w={320}
-          h={640}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: "saturate(.9) contrast(1.04)" }}
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,16,13,.15),rgba(7,16,13,.78))]" />
-      </div>
-
-      <div className="pointer-events-none absolute -right-8 bottom-[16vh] top-[12vh] z-0 hidden w-[18vw] max-w-[235px] overflow-hidden border border-[#d9b976]/18 opacity-50 shadow-[0_30px_80px_rgba(0,0,0,.48)] md:block">
-        <Img
-          file={WA(13)}
-          fallbackSeed="hero-edge-right"
-          w={320}
-          h={640}
-          alt=""
-          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", filter: "saturate(.9) contrast(1.04)" }}
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(7,16,13,.15),rgba(7,16,13,.78))]" />
-      </div>
-
-      <div ref={stageRef} className="relative z-10 flex h-full items-center justify-center px-4 py-8 sm:px-8">
-        <div ref={wardrobeRef} className="absolute left-1/2 top-[9vh] h-[80vh] w-[min(calc(100vw-1.5rem),80rem)] -translate-x-1/2 overflow-hidden rounded-t-[42vw] border border-[#d9b976]/35 bg-[#14251e] shadow-[0_50px_150px_rgba(0,0,0,.62)] sm:w-[min(calc(100vw-4rem),80rem)] lg:rounded-t-[28rem]">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,18,14,.98),rgba(23,70,56,.62)_18%,rgba(246,225,188,.13)_50%,rgba(91,52,28,.52)_82%,rgba(7,18,14,.98))]" />
-          <div className="absolute inset-4 rounded-t-[40vw] border border-[#d9b976]/15 lg:rounded-t-[27rem]" />
-          <div className="absolute left-1/2 top-0 h-full w-px bg-[#d4a85e]/40" />
-          <div className="absolute inset-x-[7%] top-[13%] h-px bg-[#d4a85e]/35" />
-          <div ref={railRef} className="absolute left-[10%] right-[10%] top-[24%] h-[2px] bg-[#d4a85e] shadow-[0_0_24px_rgba(212,168,94,.55)]" />
-
-          <div ref={titleRef} className="absolute left-1/2 top-[8%] z-20 w-[min(88vw,760px)] -translate-x-1/2 translate-y-8 text-center opacity-0">
-            <p className="mb-3 font-sans text-[0.58rem] uppercase tracking-[0.46em] text-[#d4a85e]">Private Wardrobe</p>
-            <h1 className="font-serif text-[clamp(2.4rem,8vw,7.5rem)] font-light uppercase leading-[0.9] tracking-[0.08em]">Roudah</h1>
-          </div>
-
-          <div ref={galleryRef} className="absolute bottom-[8%] left-1/2 flex w-[min(112vw,1120px)] -translate-x-1/2 items-end justify-center gap-3 sm:gap-5">
-            {WARDROBE_IMAGES.map((file, i) => (
-              <div
-                key={file}
-                className="relative shrink-0 overflow-hidden border border-[#e3bd74]/25 bg-[#120d09] shadow-[0_24px_50px_rgba(0,0,0,.42)]"
-                style={{
-                  width: i % 3 === 0 ? "min(24vw, 280px)" : "min(20vw, 230px)",
-                  height: i % 2 === 0 ? "min(48vh, 520px)" : "min(40vh, 440px)",
-                }}
-              >
-                <Img
-                  file={file}
-                  fallbackSeed={`wardrobe-${i}`}
-                  w={420}
-                  h={620}
-                  alt=""
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(12,8,5,.58),transparent_58%)]" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div ref={leftDoorRef} className="absolute left-1/2 top-[9vh] z-30 h-[80vh] w-[min(46vw,630px)] -translate-x-full overflow-hidden rounded-tl-[42vw] border border-[#b8894c]/80 bg-[#2b1b12] shadow-[inset_-42px_0_80px_rgba(0,0,0,.42),0_36px_90px_rgba(0,0,0,.46)] [transform-style:preserve-3d] lg:rounded-tl-[28rem]">
-          <div className="absolute inset-0 bg-[linear-gradient(105deg,rgba(255,221,166,.10),transparent_28%,rgba(0,0,0,.32)),repeating-linear-gradient(90deg,rgba(255,255,255,.035)_0_1px,transparent_1px_28px)]" />
-          <div className="absolute inset-5 rounded-tl-[38vw] border border-[#e1bd77]/35 lg:rounded-tl-[25rem]" />
-          <div className="absolute inset-x-10 bottom-10 top-[18%] border border-[#120c08]/45 bg-[linear-gradient(135deg,rgba(255,226,177,.11),transparent_38%,rgba(0,0,0,.26))]" />
-          <div className="absolute right-0 top-0 h-full w-px bg-[#f0d69a]/55" />
-          <div className="absolute right-6 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#d5a764] shadow-[0_0_22px_rgba(213,167,100,.72)]" />
-        </div>
-
-        <div ref={rightDoorRef} className="absolute right-1/2 top-[9vh] z-30 h-[80vh] w-[min(46vw,630px)] translate-x-full overflow-hidden rounded-tr-[42vw] border border-[#b8894c]/80 bg-[#2b1b12] shadow-[inset_42px_0_80px_rgba(0,0,0,.42),0_36px_90px_rgba(0,0,0,.46)] [transform-style:preserve-3d] lg:rounded-tr-[28rem]">
-          <div className="absolute inset-0 bg-[linear-gradient(255deg,rgba(255,221,166,.10),transparent_28%,rgba(0,0,0,.32)),repeating-linear-gradient(90deg,rgba(255,255,255,.035)_0_1px,transparent_1px_28px)]" />
-          <div className="absolute inset-5 rounded-tr-[38vw] border border-[#e1bd77]/35 lg:rounded-tr-[25rem]" />
-          <div className="absolute inset-x-10 bottom-10 top-[18%] border border-[#120c08]/45 bg-[linear-gradient(225deg,rgba(255,226,177,.11),transparent_38%,rgba(0,0,0,.26))]" />
-          <div className="absolute left-0 top-0 h-full w-px bg-[#f0d69a]/55" />
-          <div className="absolute left-6 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-[#d5a764] shadow-[0_0_22px_rgba(213,167,100,.72)]" />
-        </div>
-
-        <div ref={introRef} className="relative z-40 mx-auto flex max-w-4xl flex-col items-center px-4 text-center">
-          <div className="mb-6 flex items-center gap-4 font-sans text-[0.56rem] uppercase tracking-[0.45em] text-[#e0c58b]">
-            <span className="h-px w-10 bg-[#e0c58b]/60" />
-            <span>Open the cupboard</span>
-            <span className="h-px w-10 bg-[#e0c58b]/60" />
-          </div>
-          <h2 className="max-w-4xl font-serif text-[clamp(2.8rem,8.6vw,8.8rem)] font-light uppercase leading-[0.86] tracking-[0.06em] drop-shadow-[0_18px_34px_rgba(0,0,0,.48)]">
-            The Hidden<br />Wardrobe
-          </h2>
-          <p className="mt-7 max-w-xl font-sans text-[0.78rem] font-light uppercase leading-7 tracking-[0.28em] text-[#ead9b9]/82">
-            A private reveal of Roudah silhouettes, textures, and ceremonial detail.
-          </p>
-          <div className="mt-8 flex items-center gap-3 text-[#e0c58b]/80">
-            <span className="h-2 w-2 rotate-45 border border-current" />
-            <span className="font-sans text-[0.55rem] uppercase tracking-[0.38em]">Scroll to enter</span>
-            <span className="h-2 w-2 rotate-45 border border-current" />
-          </div>
-        </div>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-6 left-1/2 z-40 flex -translate-x-1/2 flex-col items-center gap-3 font-sans text-[0.55rem] uppercase tracking-[0.35em] text-[#d4a85e]">
-        <span>Scroll</span>
-        <span className="h-12 w-px bg-gradient-to-b from-[#d4a85e] to-transparent" />
-      </div>
-    </section>
-  );
-}
-
-function Chip({ children, active, onClick }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button onClick={onClick} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ padding: "0.38rem 1rem", border: `1px solid ${active ? C.terracotta : "rgba(184,164,140,0.45)"}`, backgroundColor: active ? C.terracotta : hov ? C.parchment : "transparent", color: active ? C.white : C.espresso, fontSize: "0.6rem", letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: "Arial", fontWeight: 300, cursor: "pointer", transition: "all 300ms", whiteSpace: "nowrap" }}>
-      {children}
-    </button>
-  );
-}
-
-function GhostBtn({ children, href = "#" }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <a href={href} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ color: C.terracotta, fontSize: "0.65rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial", fontWeight: 300, textDecoration: "none", borderBottom: `1px solid ${hov ? C.terracotta : "transparent"}`, paddingBottom: "2px", transition: "border-color 300ms", display: "inline-block" }}>
-      {children}
-    </a>
-  );
-}
-
-function HeroBtn({ children, filled = false }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ backgroundColor: filled ? C.espresso : "transparent", color: filled ? C.white : C.espresso, padding: "0.85rem 2.25rem", fontSize: "0.62rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial", border: filled ? "none" : `1px solid ${C.espresso}`, cursor: "pointer", fontWeight: 300, opacity: hov ? 0.75 : 1, transition: "opacity 400ms" }}>
-      {children}
-    </button>
-  );
-}
-
-// ─── Pin card with 3D tilt ─────────────────────────────────────────────────────
-function PinCard({ pin }) {
-  const [hov, setHov] = useState(false);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const cardRef = useRef(null);
-
-  if (pin.type === "quote") {
-    return (
-      <div style={{ backgroundColor: pin.bg, padding: "2.75rem 2rem", breakInside: "avoid", marginBottom: "12px" }}>
-        <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: "1.05rem", color: pin.textColor, lineHeight: 1.65 }}>{pin.text}</p>
-        <p style={{ color: pin.textColor, opacity: 0.45, fontSize: "0.55rem", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "Arial", marginTop: "1.25rem" }}>— ROUDAH®</p>
-      </div>
-    );
-  }
-  if (pin.type === "tag") {
-    return (
-      <div style={{ backgroundColor: pin.color, padding: "2rem 1.75rem", breakInside: "avoid", marginBottom: "12px" }}>
-        <p style={{ color: C.white, fontSize: "1.25rem", fontFamily: "Georgia,serif", fontWeight: 300, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>{pin.label}</p>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.58rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial" }}>{pin.subtitle}</p>
-        <div style={{ width: "24px", height: "1px", backgroundColor: C.gold, marginTop: "1.25rem", opacity: 0.6 }} />
-      </div>
-    );
-  }
-
-  const tagBg = pin.tag === "Limited" ? C.terracotta : pin.tag === "Exclusive" ? C.espresso : C.sage;
-  return (
-    <div ref={cardRef}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => { setHov(false); setTilt({ x: 0, y: 0 }); }}
-      onMouseMove={e => {
-        if (!cardRef.current) return;
-        const rect = cardRef.current.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width - 0.5;
-        const y = (e.clientY - rect.top) / rect.height - 0.5;
-        setTilt({ x: y * 6, y: x * -6 });
-      }}
-      style={{
-        position: "relative", breakInside: "avoid", marginBottom: "12px", overflow: "hidden", cursor: "pointer",
-        transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hov ? 1.02 : 1})`,
-        transition: hov ? "transform 80ms ease" : "transform 700ms cubic-bezier(.22,1,.36,1)",
-        boxShadow: hov ? "0 24px 56px rgba(22,16,10,0.24)" : "none",
-      }}>
-      <div style={{ position: "absolute", top: "10px", left: "10px", zIndex: 10, backgroundColor: tagBg, padding: "3px 9px" }}>
-        <span style={{ color: C.white, fontSize: "0.52rem", letterSpacing: "0.15em", textTransform: "uppercase", fontFamily: "Arial" }}>{pin.tag}</span>
-      </div>
-      <div style={{ position: "absolute", top: "10px", right: "10px", zIndex: 10, backgroundColor: "rgba(26,26,24,0.65)", padding: "4px 8px", display: "flex", alignItems: "center", gap: "4px" }}>
-        <span style={{ color: C.gold, fontSize: "0.55rem" }}>✦</span>
-        <span style={{ color: C.white, fontSize: "0.55rem", fontFamily: "Arial" }}>{pin.saves.toLocaleString()}</span>
-      </div>
-      <Img file={pin.file} fallbackSeed={pin.fallback}
-        style={{ width: "100%", height: "auto", transition: "transform 600ms ease", transform: hov ? "scale(1.04)" : "scale(1)" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(26,26,24,0.92) 0%, rgba(26,26,24,0.3) 45%, transparent 70%)", opacity: hov ? 1 : 0, transition: "opacity 400ms ease", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "1.25rem" }}>
-        <p style={{ color: C.white, fontFamily: "Georgia,serif", fontSize: "0.92rem", letterSpacing: "0.04em", marginBottom: "0.2rem", fontWeight: 300 }}>{pin.name}</p>
-        <p style={{ color: C.sand, fontSize: "0.57rem", letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.5rem" }}>{pin.fabric}</p>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p style={{ color: C.gold, fontSize: "0.85rem", fontFamily: "Georgia,serif" }}>{pin.price}</p>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.58rem", fontStyle: "italic", fontFamily: "Georgia,serif" }}>{pin.scarcity}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Trending card ─────────────────────────────────────────────────────────────
-function TrendingCard({ item }) {
-  const [hov, setHov] = useState(false);
-  const tagBg = item.tag === "Limited" ? C.terracotta : item.tag === "Bestseller" ? C.copper : C.sage;
-  return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ flexShrink: 0, width: "200px", cursor: "pointer" }}>
-      <div style={{ position: "relative", overflow: "hidden" }}>
-        <Img file={item.file} fallbackSeed={item.fallback} w={400} h={500}
-          style={{ width: "100%", aspectRatio: "4/5", objectFit: "cover", transition: "transform 600ms", transform: hov ? "scale(1.05)" : "scale(1)" }} />
-        <div style={{ position: "absolute", top: "8px", left: "8px", backgroundColor: tagBg, padding: "3px 7px" }}>
-          <p style={{ color: C.white, fontSize: "0.5rem", letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "Arial" }}>{item.tag}</p>
-        </div>
-      </div>
-      <div style={{ paddingTop: "0.75rem" }}>
-        <p style={{ fontFamily: "Georgia,serif", fontSize: "0.82rem", color: C.espresso, marginBottom: "0.2rem", fontWeight: 300 }}>{item.name}</p>
-        <p style={{ color: C.gold, fontSize: "0.8rem", fontFamily: "Georgia,serif" }}>{item.price}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── 3D Lookbook Slider ────────────────────────────────────────────────────────
-function LookbookSlider3D() {
-  const SLIDES = [
-    { file: WA(2),  name: "The Pearl Cape"    },
-    { file: WA(9),  name: "AlUla Desert Edit" },
-    { file: WA(22), name: "Canyon Silhouette" },
-    { file: WA(47), name: "Coastal Pearl"     },
-    { file: WA(15), name: "Garden Hour"       },
-    { file: WA(0),  name: "The Sage Cape"     },
-    { file: WA(4),  name: "The Oasis Set"     },
-  ];
-  const n = SLIDES.length;
-  const [curr, setCurr] = useState(0);
-  const mod = (a) => ((a % n) + n) % n;
+function Navbar() {
+  const [scrolled,   setScrolled]   = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
-    const t = setInterval(() => setCurr(c => mod(c + 1)), 4200);
-    return () => clearInterval(t);
-  }, []);
-
-  return (
-    <section id="lookbook" style={{ position: "relative", backgroundColor: C.marble, padding: "5rem 0 4rem", overflow: "hidden" }}>
-      <Reveal dir="bottom">
-        <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          <p style={{ color: C.gold, fontSize: "0.56rem", letterSpacing: "0.42em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.6rem" }}>Oasis Collection 2025</p>
-          <h2 style={{ fontFamily: "Georgia,serif", color: C.white, fontWeight: 300, fontSize: "clamp(1.2rem,2.5vw,1.8rem)", letterSpacing: "0.3em", textTransform: "uppercase" }}>Lookbook</h2>
-          <div style={{ width: "40px", height: "1px", backgroundColor: C.gold, margin: "1.2rem auto 0", opacity: 0.45 }} />
-        </div>
-      </Reveal>
-
-      {/* 3D stage */}
-      <div style={{ position: "relative", height: "500px", perspective: "1400px", perspectiveOrigin: "50% 50%", maxWidth: "900px", margin: "0 auto" }}>
-        {[-1, 0, 1].map(offset => {
-          const idx = mod(curr + offset);
-          const slide = SLIDES[idx];
-          const isCenter = offset === 0;
-          const isLeft   = offset === -1;
-          return (
-            <div key={`${curr}-${offset}`}
-              onClick={() => !isCenter && setCurr(mod(curr + offset))}
-              style={{
-                position: "absolute",
-                top: "50%", left: "50%",
-                width:  isCenter ? "290px" : "210px",
-                height: isCenter ? "440px" : "320px",
-                marginLeft: isCenter ? "-145px" : isLeft ? "-365px" : "155px",
-                marginTop:  isCenter ? "-220px" : "-160px",
-                transform: isCenter
-                  ? "rotateY(0deg) scale(1)"
-                  : isLeft
-                    ? "rotateY(36deg) scale(0.78)"
-                    : "rotateY(-36deg) scale(0.78)",
-                opacity: isCenter ? 1 : 0.48,
-                transition: "all 750ms cubic-bezier(.22,1,.36,1)",
-                boxShadow: isCenter ? "0 40px 90px rgba(0,0,0,0.7)" : "0 12px 32px rgba(0,0,0,0.35)",
-                cursor: isCenter ? "default" : "pointer",
-                zIndex: isCenter ? 10 : 5,
-                overflow: "hidden",
-              }}>
-              <Img file={slide.file} fallbackSeed={`look${idx}`} w={600} h={900}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              {isCenter && (
-                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%)", padding: "1.75rem 1.25rem" }}>
-                  <p style={{ color: C.gold, fontSize: "0.5rem", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.35rem" }}>
-                    {`${String(curr + 1).padStart(2,"0")} / ${String(n).padStart(2,"0")}`}
-                  </p>
-                  <p style={{ color: C.white, fontFamily: "Georgia,serif", fontSize: "0.95rem", fontWeight: 300 }}>{slide.name}</p>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Dot indicators */}
-      <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "2.5rem" }}>
-        {SLIDES.map((_, i) => (
-          <div key={i} onClick={() => setCurr(i)}
-            style={{ width: i === curr ? "22px" : "6px", height: "2px", backgroundColor: i === curr ? C.gold : "rgba(200,150,28,0.3)", transition: "all 400ms", cursor: "pointer" }} />
-        ))}
-      </div>
-
-      {/* Arrow buttons */}
-      {[{ d: -1, label: "‹", pos: "left" }, { d: 1, label: "›", pos: "right" }].map(({ d, label, pos }) => (
-        <button key={pos} onClick={() => setCurr(mod(curr + d))}
-          style={{ position: "absolute", [pos]: "2rem", top: "52%", transform: "translateY(-50%)", background: "rgba(200,150,28,0.1)", border: "1px solid rgba(200,150,28,0.3)", color: C.gold, width: "42px", height: "42px", cursor: "pointer", fontSize: "1.4rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {label}
-        </button>
-      ))}
-    </section>
-  );
-}
-
-// ─── Cinematic About — 4 chapters ─────────────────────────────────────────────
-function CinematicAbout() {
-  return (
-    <div id="about">
-
-      {/* Chapter 1 — Desert origin, Ken Burns */}
-      <section style={{ position: "relative", height: "100vh", overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
-        <Img file={WA(9)} fallbackSeed="about-ch1" w={1400} h={900}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "115%", objectFit: "cover", objectPosition: "center", animation: "kenBurns 18s ease-in-out infinite alternate" }} />
-        <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to top, ${C.marble} 0%, rgba(22,16,10,0.5) 55%, rgba(22,16,10,0.12) 100%)` }} />
-        <div style={{ position: "relative", padding: "0 3.5rem 5.5rem", maxWidth: "700px" }}>
-          <Reveal dir="bottom" delay={0}>
-            <p style={{ color: C.gold, fontSize: "0.55rem", letterSpacing: "0.48em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1.75rem" }}>
-              Our Story · Est. 2019
-            </p>
-          </Reveal>
-          <Reveal dir="bottom" delay={200}>
-            <h2 style={{ fontFamily: "Georgia,serif", fontWeight: 300, color: C.white, fontSize: "clamp(2.6rem,6vw,5.2rem)", lineHeight: 1.08, letterSpacing: "0.06em" }}>
-              Born from<br />the desert.
-            </h2>
-          </Reveal>
-          <Reveal dir="bottom" delay={480}>
-            <div style={{ width: "72px", height: "1px", backgroundColor: C.gold, marginTop: "2.25rem", opacity: 0.75 }} />
-          </Reveal>
-        </div>
-        {/* Scroll indicator */}
-        <div style={{ position: "absolute", right: "2.5rem", bottom: "2.5rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-          <p style={{ color: C.sand, fontSize: "0.48rem", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "Arial", writingMode: "vertical-rl", opacity: 0.5 }}>Scroll</p>
-          <div style={{ width: "1px", height: "38px", backgroundColor: C.gold, opacity: 0.4 }} />
-        </div>
-      </section>
-
-      {/* Chapter 2 — Story text, split layout */}
-      <section style={{ backgroundColor: C.parchment, padding: "8rem 2.5rem", overflow: "hidden" }}>
-        <div className="r-story" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5rem", maxWidth: "1100px", margin: "0 auto", alignItems: "center" }}>
-          <Reveal dir="left" style={{ position: "relative", paddingBottom: "4rem" }}>
-            <Img file={WA(4)} fallbackSeed="about-ch2" w={700} h={900} style={{ width: "82%", display: "block" }} />
-            <div style={{ position: "absolute", bottom: 0, right: 0, width: "50%", border: `4px solid ${C.white}` }}>
-              <Img file={WA(16)} fallbackSeed="atelier-hands" w={400} h={500} style={{ width: "100%", display: "block" }} />
-            </div>
-          </Reveal>
-          <div>
-            <Reveal dir="right" delay={80}>
-              <p style={{ color: C.gold, fontSize: "0.56rem", letterSpacing: "0.38em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1.5rem" }}>Our Story</p>
-            </Reveal>
-            <Reveal dir="right" delay={200}>
-              <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.5rem,3vw,2.2rem)", color: C.espresso, fontWeight: 300, lineHeight: 1.35, marginBottom: "1.5rem" }}>
-                Refined by<br />intention.
-              </h2>
-            </Reveal>
-            <Reveal dir="right" delay={360}>
-              <p style={{ color: C.charcoal, fontSize: "0.86rem", lineHeight: 1.95, fontFamily: "Arial", fontWeight: 300, marginBottom: "2rem", opacity: 0.82 }}>
-                ROUDAH began with a simple belief — that modest wear should never mean compromise. Each piece is thoughtfully designed for the woman who desires elegance without excess, beauty without noise. Rooted in Arabic heritage, sewn with quiet precision.
-              </p>
-            </Reveal>
-            <Reveal dir="right" delay={500}>
-              <div style={{ height: "1px", backgroundColor: C.gold, opacity: 0.28, marginBottom: "2rem" }} />
-              <GhostBtn>Discover Our World →</GhostBtn>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* Chapter 3 — Stats, count-up */}
-      <section style={{ backgroundColor: C.espresso, padding: "7rem 2.5rem" }}>
-        <Reveal dir="bottom">
-          <p style={{ textAlign: "center", color: C.gold, fontSize: "0.56rem", letterSpacing: "0.42em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "4.5rem", opacity: 0.7 }}>By the numbers</p>
-        </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "3rem", maxWidth: "860px", margin: "0 auto" }}>
-          {[
-            { target: 847, suffix: "+", label: "Pieces Saved",    delay: 0   },
-            { target: 100, suffix: "%", label: "Natural Fabrics", delay: 180 },
-            { target: 5,   suffix: "+", label: "Years Crafting",  delay: 360 },
-          ].map(({ target, suffix, label, delay }) => (
-            <Reveal key={label} dir="scale" delay={delay}>
-              <StatCounter target={target} suffix={suffix} label={label} />
-            </Reveal>
-          ))}
-        </div>
-        <Reveal dir="bottom" delay={540}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", justifyContent: "center", marginTop: "5rem" }}>
-            <div style={{ height: "1px", flex: 1, maxWidth: "75px", backgroundColor: C.gold, opacity: 0.22 }} />
-            <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", color: C.sand, fontSize: "0.9rem", opacity: 0.65 }}>"Made with intention."</p>
-            <div style={{ height: "1px", flex: 1, maxWidth: "75px", backgroundColor: C.gold, opacity: 0.22 }} />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* Chapter 4 — Portrait + floating quote */}
-      <section style={{ position: "relative", overflow: "hidden", minHeight: "88vh", display: "flex", alignItems: "center" }}>
-        <Img file={WA(3)} fallbackSeed="about-ch4" w={900} h={1200}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(22,16,10,0.02) 0%, rgba(22,16,10,0.75) 50%, rgba(22,16,10,0.92) 100%)" }} />
-        <div style={{ position: "relative", marginLeft: "auto", padding: "4rem 3.5rem", maxWidth: "480px", width: "100%" }}>
-          <Reveal dir="right">
-            <div style={{ width: "36px", height: "1px", backgroundColor: C.gold, marginBottom: "2rem", opacity: 0.7 }} />
-            <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", color: C.white, fontSize: "clamp(1.1rem,2.5vw,1.65rem)", lineHeight: 1.6, fontWeight: 300, marginBottom: "2rem" }}>
-              "The woman who wears ROUDAH has already arrived."
-            </p>
-            <p style={{ color: C.gold, fontSize: "0.54rem", letterSpacing: "0.38em", textTransform: "uppercase", fontFamily: "Arial", opacity: 0.72 }}>— ROUDAH® ATELIER</p>
-          </Reveal>
-        </div>
-      </section>
-
-    </div>
-  );
-}
-
-// ─── Main ──────────────────────────────────────────────────────────────────────
-export default function Roudah() {
-  const [scrolled,       setScrolled]       = useState(false);
-  const [mobileOpen,     setMobileOpen]     = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-
-  useEffect(() => {
-    const fn = () => {
-      const y = window.scrollY;
-      setScrolled(y > 55);
-      const max = document.body.scrollHeight - window.innerHeight;
-      setScrollProgress(max > 0 ? (y / max) * 100 : 0);
-    };
+    const fn = () => setScrolled(window.scrollY > 55);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const linkStyle = (isActive) => ({
+    color: isActive ? C.gold : C.espresso,
+    fontSize: "0.6rem",
+    letterSpacing: "0.22em",
+    textTransform: "uppercase",
+    fontFamily: "Arial",
+    fontWeight: 300,
+    textDecoration: "none",
+  });
+
   return (
-    <div style={{ backgroundColor: C.cream, color: C.charcoal, fontFamily: "Georgia,'Times New Roman',serif", overflowX: "hidden" }}>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        input::placeholder { color: rgba(192,171,140,0.55); }
-        ::-webkit-scrollbar { height: 4px; width: 4px; background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${C.sand}; }
-        @keyframes fadeUp    { from { opacity:0; transform:translateY(40px);  } to { opacity:1; transform:translateY(0);  } }
-        @keyframes fadeRight { from { opacity:0; transform:translateX(40px);  } to { opacity:1; transform:translateX(0);  } }
-        @keyframes scaleIn   { from { opacity:0; transform:scale(0.88);       } to { opacity:1; transform:scale(1);       } }
-        @keyframes goldGrow  { from { width:0; opacity:0; }                     to { width:80px; opacity:0.75; }           }
-        @keyframes kenBurns  { 0%   { transform:scale(1) translateX(0); }       100% { transform:scale(1.09) translateX(-2%); } }
-        @keyframes pulseGold { 0%,100% { opacity:0.55; }                         50%  { opacity:1; }                       }
-        @media (max-width: 900px) {
-          .r-hero  { grid-template-columns: 1fr !important; }
-          .r-story { grid-template-columns: 1fr !important; }
-          .r-craft { grid-template-columns: 1fr !important; }
-          .r-mason { column-count: 2 !important; }
-          .r-navlinks { display: none !important; }
-        }
-        @media (max-width: 580px) {
-          .r-mason { column-count: 1 !important; }
-        }
-      `}</style>
+    <>
+      <nav style={{
+        position: "sticky", top: 0, zIndex: 200,
+        backgroundColor: scrolled ? C.white : "transparent",
+        borderBottom: `1px solid ${scrolled ? "rgba(192,171,140,0.28)" : "transparent"}`,
+        transition: "background-color 500ms, border-color 500ms",
+        padding: "1rem 2.5rem",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "2rem",
+      }}>
+        <Link to="/" style={{ fontFamily: "Georgia,serif", fontSize: "1rem", letterSpacing: "0.52em", color: C.espresso, fontWeight: 300, textTransform: "uppercase", userSelect: "none", flexShrink: 0, textDecoration: "none" }}>
+          ROUDAH
+        </Link>
 
-      {/* Scroll progress bar */}
-      <div style={{ position: "fixed", top: 0, left: 0, width: `${scrollProgress}%`, height: "2px", backgroundColor: C.gold, zIndex: 300, transition: "width 80ms linear", boxShadow: `0 0 8px ${C.gold}66`, pointerEvents: "none" }} />
-
-      {/* ══ NAVBAR ══════════════════════════════════════════════════════════════ */}
-      <nav style={{ position: "sticky", top: 0, zIndex: 200, backgroundColor: scrolled ? C.white : "transparent", borderBottom: `1px solid ${scrolled ? "rgba(192,171,140,0.28)" : "transparent"}`, transition: "background-color 500ms, border-color 500ms", padding: "1rem 2.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "2rem" }}>
-        <div style={{ fontFamily: "Georgia,serif", fontSize: "1rem", letterSpacing: "0.52em", color: C.espresso, fontWeight: 300, textTransform: "uppercase", userSelect: "none", flexShrink: 0 }}>ROUDAH</div>
         <div className="r-navlinks" style={{ display: "flex", gap: "2rem" }}>
-          {["Collection","About","Lookbook","Contact"].map(l => (
-            <a key={l} href={`#${l.toLowerCase()}`} style={{ color: C.espresso, fontSize: "0.6rem", letterSpacing: "0.22em", textTransform: "uppercase", fontFamily: "Arial", fontWeight: 300, textDecoration: "none" }}>{l}</a>
+          {[["Collection", "/collection"], ["About", "/about"], ["Contact", "/contact"]].map(([label, to]) => (
+            <NavLink key={label} to={to} style={({ isActive }) => linkStyle(isActive)}>{label}</NavLink>
           ))}
         </div>
+
         <div style={{ display: "flex", alignItems: "center", gap: "1.35rem", flexShrink: 0 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.espresso} strokeWidth="1.4" strokeLinecap="round" style={{ cursor: "pointer" }}>
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -712,221 +75,105 @@ export default function Roudah() {
         </div>
       </nav>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 190, backgroundColor: C.espresso, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2.5rem" }}>
-          {["Collection","About","Lookbook","Contact"].map(l => (
-            <a key={l} href={`#${l.toLowerCase()}`} onClick={() => setMobileOpen(false)}
-              style={{ color: C.sand, fontSize: "0.72rem", letterSpacing: "0.4em", textTransform: "uppercase", fontFamily: "Arial", textDecoration: "none" }}>{l}</a>
+          {[["Collection", "/collection"], ["About", "/about"], ["Contact", "/contact"]].map(([label, to]) => (
+            <Link key={label} to={to}
+              style={{ color: C.sand, fontSize: "0.72rem", letterSpacing: "0.4em", textTransform: "uppercase", fontFamily: "Arial", textDecoration: "none" }}>{label}</Link>
           ))}
         </div>
       )}
+    </>
+  );
+}
 
-      {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
-      <ImmersiveWardrobeHero />
-      {/* ══ STORY CIRCLES ═══════════════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: C.white, padding: "2rem 2.5rem 0", borderBottom: `1px solid rgba(192,171,140,0.2)` }}>
-        <div style={{ display: "flex", gap: "1.85rem", overflowX: "auto", paddingBottom: "1.75rem" }}>
-          {CATEGORIES.map(({ label, file }, i) => (
-            <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", flexShrink: 0, cursor: "pointer", animation: `scaleIn 600ms ease both ${300 + i * 75}ms`, opacity: 0 }}>
-              <div style={{ width: "66px", height: "66px", borderRadius: "50%", border: `2px solid ${C.terracotta}`, overflow: "hidden" }}>
-                <Img file={file} fallbackSeed={label} w={200} h={200}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
-              </div>
-              <p style={{ color: C.espresso, fontSize: "0.56rem", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial", fontWeight: 300, whiteSpace: "nowrap" }}>{label}</p>
-            </div>
-          ))}
+function Footer() {
+  return (
+    <footer style={{ backgroundColor: C.marble, padding: "4.5rem 2.5rem 2.5rem", borderTop: "1px solid rgba(200,150,28,0.12)" }}>
+      <Reveal dir="bottom">
+        <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
+          <Img file={WA(35)} fallbackSeed="roudah-logo" w={400} h={300}
+            style={{ height: "80px", width: "auto", margin: "0 auto", opacity: 0.85, filter: "brightness(1.1)" }} />
         </div>
-      </section>
-
-      {/* ══ MASONRY PIN GRID ════════════════════════════════════════════════════ */}
-      <section id="collection" style={{ backgroundColor: C.cream, padding: "4rem 1.5rem" }}>
-        <Reveal dir="bottom">
-          <div style={{ textAlign: "center", marginBottom: "2.75rem" }}>
-            <p style={{ color: C.terracotta, fontSize: "0.58rem", letterSpacing: "0.4em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.5rem" }}>✦ Curated for you</p>
-            <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1rem,2.5vw,1.55rem)", color: C.espresso, letterSpacing: "0.38em", textTransform: "uppercase", fontWeight: 300 }}>The Oasis Edit</h2>
-          </div>
-        </Reveal>
-        <div className="r-mason" style={{ columnCount: 3, columnGap: "12px", maxWidth: "1400px", margin: "0 auto" }}>
-          {PINS.map((pin, i) => <PinCard key={i} pin={pin} />)}
-        </div>
-        <Reveal dir="bottom">
-          <div style={{ textAlign: "center", marginTop: "3rem" }}>
-            <GhostBtn>View All Pieces →</GhostBtn>
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ══ EDITORIAL BAND ══════════════════════════════════════════════════════ */}
-      <section style={{ position: "relative", overflow: "hidden", height: "300px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Img file={WA(10)} fallbackSeed="roudah-band" w={1400} h={600}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }} />
-        <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(22,16,10,0.76)" }} />
-        <Reveal dir="scale" style={{ position: "relative", textAlign: "center", padding: "0 2rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", justifyContent: "center" }}>
-            <div style={{ width: "55px", height: "1px", backgroundColor: C.gold, opacity: 0.6 }} />
-            <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", color: C.white, fontSize: "clamp(1rem,2.5vw,1.55rem)", fontWeight: 300, letterSpacing: "0.04em" }}>
-              "Every piece begins as a feeling."
-            </p>
-            <div style={{ width: "55px", height: "1px", backgroundColor: C.gold, opacity: 0.6 }} />
-          </div>
-          <p style={{ color: C.sand, fontSize: "0.55rem", letterSpacing: "0.38em", textTransform: "uppercase", fontFamily: "Arial", marginTop: "1.25rem", opacity: 0.7 }}>— ROUDAH® ATELIER</p>
-        </Reveal>
-      </section>
-
-      {/* ══ TRENDING NOW ════════════════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: C.white, padding: "4rem 2.5rem" }}>
-        <Reveal dir="bottom">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem" }}>
+      </Reveal>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "2.5rem", maxWidth: "900px", margin: "0 auto 3.5rem" }}>
+        {[
+          { title: "Collection",    links: ["The Oasis Edit", "New Arrivals", "Bestsellers", "Archive"]    },
+          { title: "About",         links: ["Our Story", "The Atelier", "Sustainability", "Press"]         },
+          { title: "Customer Care", links: ["Sizing Guide", "Shipping", "Returns", "FAQs"]                 },
+          { title: "Follow",        links: ["Instagram", "Pinterest", "Newsletter", "Lookbook"]            },
+        ].map(({ title, links }, ci) => (
+          <Reveal key={title} dir="bottom" delay={ci * 90}>
             <div>
-              <p style={{ color: C.terracotta, fontSize: "0.56rem", letterSpacing: "0.35em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "0.4rem" }}>Most Saved</p>
-              <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1rem,2vw,1.35rem)", color: C.espresso, letterSpacing: "0.32em", textTransform: "uppercase", fontWeight: 300 }}>Trending Now</h2>
-            </div>
-            <GhostBtn>See All →</GhostBtn>
-          </div>
-        </Reveal>
-        <div style={{ display: "flex", gap: "1.25rem", overflowX: "auto", paddingBottom: "0.5rem" }}>
-          {TRENDING.map((item, i) => <TrendingCard key={i} item={item} />)}
-        </div>
-      </section>
-
-      {/* ══ CINEMATIC ABOUT ════════════════════════════════════════════════════ */}
-      <CinematicAbout />
-
-      {/* ══ 3D LOOKBOOK SLIDER ══════════════════════════════════════════════════ */}
-      <LookbookSlider3D />
-
-      {/* ══ CRAFT / DETAIL ══════════════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: C.parchment, padding: "6rem 2.5rem" }}>
-        <div className="r-craft" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4rem", maxWidth: "1100px", margin: "0 auto", alignItems: "center" }}>
-          <Reveal dir="left" style={{ display: "grid", gridTemplateRows: "auto auto", gap: "12px" }}>
-            <Img file={WA(30)} fallbackSeed="roudah-tags"       w={800} h={500} style={{ width: "100%", display: "block" }} />
-            <Img file={WA(12)} fallbackSeed="roudah-embroidery" w={800} h={400} style={{ width: "100%", display: "block" }} />
-          </Reveal>
-          <div>
-            <Reveal dir="right" delay={100}>
-              <p style={{ color: C.gold, fontSize: "0.56rem", letterSpacing: "0.38em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1.5rem" }}>Made With Intention</p>
-            </Reveal>
-            <Reveal dir="right" delay={250}>
-              <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.4rem,3vw,2.1rem)", color: C.espresso, fontWeight: 300, lineHeight: 1.3, marginBottom: "1.5rem" }}>
-                Every bead placed<br />by hand.
-              </h2>
-            </Reveal>
-            <Reveal dir="right" delay={400}>
-              <p style={{ color: C.charcoal, fontSize: "0.86rem", lineHeight: 1.95, fontFamily: "Arial", fontWeight: 300, marginBottom: "2rem", opacity: 0.82 }}>
-                From the embroidered florals to the hand-stitched pearl constellations, each ROUDAH piece carries hours of artisan craft. We work with a small atelier — never mass-produced, always considered.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
-                {["Hand-embellished beadwork","Limited run per style","Natural & luxury fabrics only","Each piece individually tagged"].map(item => (
-                  <p key={item} style={{ color: C.charcoal, fontSize: "0.8rem", fontFamily: "Arial", fontWeight: 300, opacity: 0.75 }}>— {item}</p>
-                ))}
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ══ SCARCITY BANNER ════════════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: C.terracotta, padding: "5rem 2rem", textAlign: "center" }}>
-        <Reveal dir="bottom">
-          <p style={{ color: "rgba(255,255,255,0.62)", fontSize: "0.56rem", letterSpacing: "0.4em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1rem" }}>Limited Availability</p>
-          <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.5rem,3.5vw,2.3rem)", color: C.white, fontWeight: 300, letterSpacing: "0.08em", marginBottom: "1rem" }}>
-            The Noor Collection is almost gone.
-          </h2>
-          <p style={{ color: "rgba(255,255,255,0.62)", fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "2.5rem" }}>
-            12 pieces remaining across all styles
-          </p>
-          <button style={{ backgroundColor: C.gold, color: C.espresso, padding: "0.9rem 2.5rem", fontSize: "0.62rem", letterSpacing: "0.25em", textTransform: "uppercase", fontFamily: "Arial", border: "none", cursor: "pointer", fontWeight: 600 }}>
-            Shop Before It's Gone
-          </button>
-        </Reveal>
-      </section>
-
-      {/* ══ TESTIMONIALS ═══════════════════════════════════════════════════════ */}
-      <section style={{ backgroundColor: C.cream, padding: "6rem 2.5rem" }}>
-        <Reveal dir="bottom">
-          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
-            <p style={{ color: C.espresso, fontSize: "0.58rem", letterSpacing: "0.42em", textTransform: "uppercase", fontFamily: "Arial" }}>Worn With Love</p>
-            <div style={{ width: "34px", height: "1px", backgroundColor: C.gold, margin: "1.2rem auto 0", opacity: 0.55 }} />
-          </div>
-        </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "1.5rem", maxWidth: "1100px", margin: "0 auto" }}>
-          {[
-            { quote: "I wore the Sahara Cape to a walima and felt like I had arrived.",             person: "Fatima R.", city: "Johannesburg", saves: 342, delay: 0   },
-            { quote: "The quality is unlike anything I've found locally. Each seam is considered.", person: "Nadia K.",  city: "Cape Town",    saves: 218, delay: 160 },
-            { quote: "Timeless. I will wear this for years. ROUDAH understands a woman.",           person: "Ilham S.",  city: "Durban",       saves: 501, delay: 320 },
-          ].map(({ quote, person, city, saves, delay }) => (
-            <Reveal key={person} dir="bottom" delay={delay}>
-              <div style={{ backgroundColor: C.white, padding: "2.25rem", border: "1px solid rgba(192,171,140,0.28)", position: "relative", height: "100%" }}>
-                <div style={{ position: "absolute", top: "1rem", right: "1rem", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <span style={{ color: C.gold, fontSize: "0.56rem" }}>✦</span>
-                  <span style={{ color: C.copper, fontSize: "0.56rem", fontFamily: "Arial" }}>{saves}</span>
-                </div>
-                <p style={{ fontFamily: "Georgia,serif", fontSize: "2.8rem", color: C.gold, lineHeight: 0.8, marginBottom: "1rem", opacity: 0.6 }}>"</p>
-                <p style={{ fontFamily: "Georgia,serif", fontStyle: "italic", color: C.espresso, fontSize: "0.88rem", lineHeight: 1.85, marginBottom: "1.5rem", fontWeight: 300 }}>{quote}</p>
-                <p style={{ color: C.copper, fontSize: "0.56rem", letterSpacing: "0.2em", textTransform: "uppercase", fontFamily: "Arial" }}>— {person}, {city}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ══ NEWSLETTER ═════════════════════════════════════════════════════════ */}
-      <section style={{ position: "relative", overflow: "hidden" }}>
-        <Img file={WA(45)} fallbackSeed="roudah-newsletter" w={1400} h={800}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-        <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(62,28,10,0.82)" }} />
-        <div style={{ position: "relative", padding: "7rem 2rem", textAlign: "center" }}>
-          <Reveal dir="bottom">
-            <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-              <div style={{ height: "1px", backgroundColor: C.gold, opacity: 0.28, marginBottom: "3.5rem" }} />
-              <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.8rem,4vw,2.6rem)", color: C.white, fontWeight: 300, letterSpacing: "0.08em", marginBottom: "1.2rem" }}>Enter the Oasis.</h2>
-              <p style={{ color: C.sand, fontSize: "0.78rem", lineHeight: 1.85, fontFamily: "Arial", fontWeight: 300, marginBottom: "2.5rem", opacity: 0.82 }}>
-                "Be first to hear of new arrivals, exclusive edits, and quiet moments from ROUDAH."
-              </p>
-              <div style={{ display: "flex", border: "1px solid rgba(192,171,140,0.32)" }}>
-                <input type="email" placeholder="your@email.com"
-                  style={{ flex: 1, padding: "0.9rem 1.25rem", backgroundColor: "transparent", border: "none", color: C.white, fontSize: "0.76rem", fontFamily: "Arial", outline: "none", fontWeight: 300 }} />
-                <button style={{ backgroundColor: C.gold, color: C.espresso, padding: "0.9rem 1.75rem", border: "none", fontSize: "0.6rem", letterSpacing: "0.25em", textTransform: "uppercase", fontFamily: "Arial", cursor: "pointer", fontWeight: 600 }}>Join</button>
-              </div>
-              <p style={{ color: C.sand, fontSize: "0.56rem", letterSpacing: "0.1em", fontFamily: "Arial", marginTop: "1.2rem", opacity: 0.45 }}>We send rarely. Only when it matters.</p>
+              <p style={{ color: C.sand, fontSize: "0.56rem", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1.25rem" }}>{title}</p>
+              {links.map(link => (
+                <p key={link} style={{ color: C.white, fontSize: "0.76rem", fontFamily: "Arial", fontWeight: 300, marginBottom: "0.6rem", opacity: 0.52, cursor: "pointer" }}>{link}</p>
+              ))}
             </div>
           </Reveal>
-        </div>
-      </section>
+        ))}
+      </div>
+      <div style={{ height: "1px", backgroundColor: C.gold, opacity: 0.14, marginBottom: "1.75rem" }} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div />
+        <p style={{ color: C.sand, fontSize: "0.56rem", letterSpacing: "0.18em", fontFamily: "Arial", opacity: 0.48 }}>© 2025 ROUDAH®. All rights reserved.</p>
+        <p style={{ color: C.sand, fontSize: "0.82rem", fontFamily: "Georgia", opacity: 0.42 }}>روضة</p>
+      </div>
+    </footer>
+  );
+}
 
-      {/* ══ FOOTER ═════════════════════════════════════════════════════════════ */}
-      <footer id="contact" style={{ backgroundColor: C.marble, padding: "4.5rem 2.5rem 2.5rem", borderTop: "1px solid rgba(200,150,28,0.12)" }}>
-        <Reveal dir="bottom">
-          <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
-            <Img file={WA(35)} fallbackSeed="roudah-logo" w={400} h={300}
-              style={{ height: "80px", width: "auto", margin: "0 auto", opacity: 0.85, filter: "brightness(1.1)" }} />
-          </div>
-        </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "2.5rem", maxWidth: "900px", margin: "0 auto 3.5rem" }}>
-          {[
-            { title: "Collection",    links: ["The Oasis Edit","New Arrivals","Bestsellers","Archive"]    },
-            { title: "About",         links: ["Our Story","The Atelier","Sustainability","Press"]         },
-            { title: "Customer Care", links: ["Sizing Guide","Shipping","Returns","FAQs"]                 },
-            { title: "Follow",        links: ["Instagram","Pinterest","Newsletter","Lookbook"]            },
-          ].map(({ title, links }, ci) => (
-            <Reveal key={title} dir="bottom" delay={ci * 90}>
-              <div>
-                <p style={{ color: C.sand, fontSize: "0.56rem", letterSpacing: "0.3em", textTransform: "uppercase", fontFamily: "Arial", marginBottom: "1.25rem" }}>{title}</p>
-                {links.map(link => (
-                  <p key={link} style={{ color: C.white, fontSize: "0.76rem", fontFamily: "Arial", fontWeight: 300, marginBottom: "0.6rem", opacity: 0.52, cursor: "pointer" }}>{link}</p>
-                ))}
-              </div>
-            </Reveal>
-          ))}
-        </div>
-        <div style={{ height: "1px", backgroundColor: C.gold, opacity: 0.14, marginBottom: "1.75rem" }} />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div />
-          <p style={{ color: C.sand, fontSize: "0.56rem", letterSpacing: "0.18em", fontFamily: "Arial", opacity: 0.48 }}>© 2025 ROUDAH®. All rights reserved.</p>
-          <p style={{ color: C.sand, fontSize: "0.82rem", fontFamily: "Georgia", opacity: 0.42 }}>روضة</p>
-        </div>
-      </footer>
-    </div>
+function ScrollProgress() {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    const fn = () => {
+      const max = document.body.scrollHeight - window.innerHeight;
+      setPct(max > 0 ? (window.scrollY / max) * 100 : 0);
+    };
+    window.addEventListener("scroll", fn, { passive: true });
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, width: `${pct}%`, height: "2px", backgroundColor: C.gold, zIndex: 300, transition: "width 80ms linear", boxShadow: `0 0 8px ${C.gold}66`, pointerEvents: "none" }} />
+  );
+}
+
+export default function Roudah() {
+  return (
+    <BrowserRouter>
+      <div style={{ backgroundColor: C.cream, color: C.charcoal, fontFamily: "Georgia,'Times New Roman',serif", overflowX: "hidden" }}>
+        <style>{`
+          *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+          input::placeholder { color: rgba(192,171,140,0.55); }
+          ::-webkit-scrollbar { height: 4px; width: 4px; background: transparent; }
+          ::-webkit-scrollbar-thumb { background: ${C.sand}; }
+          @keyframes fadeUp    { from { opacity:0; transform:translateY(40px);  } to { opacity:1; transform:translateY(0);  } }
+          @keyframes scaleIn   { from { opacity:0; transform:scale(0.88);       } to { opacity:1; transform:scale(1);       } }
+          @keyframes kenBurns  { 0%   { transform:scale(1) translateX(0); }       100% { transform:scale(1.09) translateX(-2%); } }
+          @media (max-width: 900px) {
+            .r-story { grid-template-columns: 1fr !important; }
+            .r-craft { grid-template-columns: 1fr !important; }
+            .r-mason { column-count: 2 !important; }
+            .r-navlinks { display: none !important; }
+          }
+          @media (max-width: 580px) {
+            .r-mason { column-count: 1 !important; }
+          }
+        `}</style>
+
+        <ScrollToTop />
+        <ScrollProgress />
+        <Navbar />
+
+        <Routes>
+          <Route path="/"           element={<Home />} />
+          <Route path="/collection" element={<Collection />} />
+          <Route path="/about"      element={<About />} />
+          <Route path="/contact"    element={<Contact />} />
+        </Routes>
+
+        <Footer />
+      </div>
+    </BrowserRouter>
   );
 }
