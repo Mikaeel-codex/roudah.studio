@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { C, WA, Img, Reveal, GhostBtn, Chip, PinCard, TrendingCard, PINS, TRENDING } from "../shared.jsx";
 import {motion} from "framer-motion";
 import StorySection from "./StorySection.jsx";
-import MagazineIntro from "../components/MagazineIntro";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -91,7 +90,292 @@ function GoldDust() {
   );
 }
 
+const MAGAZINE_VIDEO_SOURCES = [
+  "/Magazine/ROUDAH_magazine_opening.mp4",
+  "/Magazine/ROUDAH_magazine_opening.mp4",
+  "/Magazine/ROUDAH_magazine_opening.mp4",
+];
+
+function MagazineVideoReveal({ children }) {
+  const sectionRef = useRef(null);
+  const videoRef = useRef(null);
+  const leftPanelRef = useRef(null);
+  const rightPanelRef = useRef(null);
+  const shadeRef = useRef(null);
+  const cueRef = useRef(null);
+  const seamRef = useRef(null);
+  const heroRevealTimerRef = useRef(null);
+  const [canReveal, setCanReveal] = useState(false);
+  const [showSplitPages, setShowSplitPages] = useState(false);
+  const [videoHidden, setVideoHidden] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(false);
+
+  const showSplitReveal = () => {
+    if (showSplitPages) return;
+
+    setVideoHidden(true);
+    setShowSplitPages(true);
+    setCanReveal(true);
+
+    heroRevealTimerRef.current = window.setTimeout(() => {
+      setHeroVisible(true);
+    }, 0);
+  };
+
+  useLayoutEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    window.scrollTo(0, 0);
+
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = 0;
+    }
+
+    return undefined;
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+
+    video.pause();
+    video.currentTime = 0;
+
+    const playDelay = window.setTimeout(() => {
+      video.play().catch(() => {});
+    }, 2000);
+
+    return () => {
+      window.clearTimeout(playDelay);
+      window.clearTimeout(heroRevealTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (showSplitPages) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showSplitPages]);
+
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    const leftPanel = leftPanelRef.current;
+    const rightPanel = rightPanelRef.current;
+    const shade = shadeRef.current;
+    const cue = cueRef.current;
+    const seam = seamRef.current;
+    const revealReady = showSplitPages && canReveal;
+
+    if (!section || !leftPanel || !rightPanel || !shade || !cue || !seam) return;
+
+    const ctx = gsap.context(() => {
+      gsap.set([leftPanel, rightPanel], { xPercent: 0 });
+      gsap.set(cue, { opacity: 0, y: 12 });
+
+      gsap.to([leftPanel, rightPanel, seam], {
+        autoAlpha: showSplitPages ? 1 : 0,
+        duration: 0,
+      });
+
+      gsap.to(shade, {
+        opacity: 0,
+        duration: 0,
+      });
+
+      gsap.to(cue, {
+        opacity: revealReady ? 1 : 0,
+        y: revealReady ? 0 : 12,
+        duration: 1,
+        delay: showSplitPages ? 1.4 : 0,
+        ease: "power2.out",
+      });
+
+      if (!revealReady) return;
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: "+=115%",
+          scrub: 0.9,
+          pin: true,
+          anticipatePin: 1,
+        },
+      });
+
+      tl.to(leftPanel, { xPercent: -102, ease: "none" }, 0)
+        .to(rightPanel, { xPercent: 102, ease: "none" }, 0)
+        .to(shade, { opacity: 0, ease: "none" }, 0)
+        .to(cue, { opacity: 0, y: -18, ease: "none" }, 0)
+        .to(seam, { autoAlpha: 0, ease: "none" }, 0);
+    }, section);
+
+    return () => ctx.revert();
+  }, [canReveal, showSplitPages]);
+
+  return (
+    <section
+      ref={sectionRef}
+      aria-label="Roudah magazine opening"
+      style={{
+        position: "relative",
+        height: "100vh",
+        overflow: "hidden",
+        background: "#0b0705",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 1,
+          opacity: heroVisible ? 1 : 0,
+          visibility: heroVisible ? "visible" : "hidden",
+          transition: "opacity 1.2s ease, visibility 1.2s ease",
+        }}
+      >
+        {children}
+      </div>
+
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        preload="auto"
+        onLoadedData={(event) => {
+          event.currentTarget.currentTime = 0;
+        }}
+        onEnded={showSplitReveal}
+        onError={(event) => {
+          const currentSource = event.currentTarget.currentSrc || "Magazine video";
+          console.warn(`${currentSource} could not be loaded.`);
+          showSplitReveal();
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          background: "#0b0705",
+          zIndex: videoHidden ? 0 : 60,
+          opacity: videoHidden ? 0 : 1,
+          visibility: videoHidden ? "hidden" : "visible",
+          transition: "opacity 1.2s ease, visibility 1.2s ease",
+        }}
+      >
+        {MAGAZINE_VIDEO_SOURCES.map((src) => (
+          <source key={src} src={src} type="video/mp4" />
+        ))}
+      </video>
+
+      <div
+        ref={shadeRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(circle at center, rgba(255,244,224,0.12), rgba(9,5,3,0.76) 72%)",
+          zIndex: 30,
+          pointerEvents: "none",
+          opacity: 0,
+        }}
+      />
+
+      <div
+        ref={leftPanelRef}
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "50.08%",
+          height: "100%",
+          backgroundImage:
+            "linear-gradient(90deg, rgba(0,0,0,0.2), rgba(0,0,0,0.02)), url('/Magazine/cover-left.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "right center",
+          zIndex: 40,
+          transformOrigin: "right center",
+          boxShadow: "18px 0 38px rgba(0,0,0,0.28)",
+          opacity: 0,
+          visibility: "hidden",
+        }}
+      />
+
+      <div
+        ref={rightPanelRef}
+        style={{
+          position: "absolute",
+          right: 0,
+          top: 0,
+          width: "50.08%",
+          height: "100%",
+          backgroundImage:
+            "linear-gradient(270deg, rgba(0,0,0,0.2), rgba(0,0,0,0.02)), url('/Magazine/cover-right.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "left center",
+          zIndex: 40,
+          transformOrigin: "left center",
+          boxShadow: "-18px 0 38px rgba(0,0,0,0.28)",
+          opacity: 0,
+          visibility: "hidden",
+        }}
+      />
+
+      <div
+        ref={seamRef}
+        style={{
+          position: "absolute",
+          left: "50%",
+          top: 0,
+          width: "1px",
+          height: "100%",
+          background:
+            "linear-gradient(to bottom, transparent, rgba(245,232,216,0.58), transparent)",
+          zIndex: 45,
+          transform: "translateX(-50%)",
+          pointerEvents: "none",
+          opacity: 0,
+          visibility: "hidden",
+        }}
+      />
+
+      <p
+        ref={cueRef}
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: "2rem",
+          transform: "translateX(-50%)",
+          margin: 0,
+          color: "#F5E8D8",
+          fontSize: "0.68rem",
+          letterSpacing: "0.32em",
+          textTransform: "uppercase",
+          zIndex: 50,
+          pointerEvents: "none",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Scroll to enter
+      </p>
+    </section>
+  );
+}
+
 function AssetHero() {
+  const heroRef = useRef(null);
+  const bgRef = useRef(null);
+  const embroideryRef = useRef(null);
+  const dressRef = useRef(null);
+  const contentRef = useRef(null);
   const [mousePosition, setMousePosition] = useState({
   x: 0,
   y: 0,
@@ -102,8 +386,66 @@ const handleMouseMove = (e) => {
 
   setMousePosition({ x, y });
 };
+
+  useLayoutEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+
+    const ctx = gsap.context(() => {
+      gsap.to(bgRef.current, {
+        yPercent: -7,
+        scale: 1.06,
+        ease: "none",
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: "bottom top",
+          scrub: 1.1,
+        },
+      });
+
+      gsap.to(embroideryRef.current, {
+        yPercent: -14,
+        scale: 1.28,
+        ease: "none",
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: "bottom top",
+          scrub: 1,
+        },
+      });
+
+      gsap.to(dressRef.current, {
+        yPercent: 7,
+        scale: 1.04,
+        ease: "none",
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: "bottom top",
+          scrub: 1.2,
+        },
+      });
+
+      gsap.to(contentRef.current, {
+        yPercent: -10,
+        ease: "none",
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: "bottom top",
+          scrub: 1,
+        },
+      });
+    }, hero);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <section
+    ref={heroRef}
     onMouseMove={handleMouseMove}
       style={{
         position: "relative",
@@ -113,6 +455,14 @@ const handleMouseMove = (e) => {
       }}
     >
       {/* Background Room */}
+      <div
+          ref={bgRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 1,
+          }}
+        >
       <motion.img
           src="/Hero page/Background-room.png"
           alt=""
@@ -134,11 +484,23 @@ const handleMouseMove = (e) => {
             objectPosition: "center right",
             
             filter: "brightness(0.35)",
-            zIndex: 1,
           }}
         />
+      </div>
 
       {/* Embroidery Closeup */}
+        <div
+          ref={embroideryRef}
+          style={{
+            position: "absolute",
+            left: "-12%",
+            top: 0,
+            width: "58%",
+            height: "100%",
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+        >
         <motion.img
           src="/Hero page/embroidery-detail.png"
           alt=""
@@ -166,13 +528,11 @@ const handleMouseMove = (e) => {
           }}
           style={{
             position: "absolute",
-            left: "-12%",
-            top: 0,
-            width: "58%",
+            inset: 0,
+            width: "100%",
             height: "100%",
             objectFit: "cover",
             opacity: 0.70,
-            zIndex: 2,
             //transform: "scale(1.15)",
 
             WebkitMaskImage:
@@ -181,6 +541,7 @@ const handleMouseMove = (e) => {
               "linear-gradient(to right, black 0%, black 70%, transparent 100%)",
           }}
         />
+        </div>
 
       {/* Dark Overlay */}
       <div
@@ -211,6 +572,17 @@ const handleMouseMove = (e) => {
 
 
       {/* Dress */}
+      <div
+        ref={dressRef}
+        style={{
+          position: "absolute",
+          right: "5%",
+          bottom: 0,
+          height: "104vh",
+          zIndex: 7,
+          pointerEvents: "none",
+        }}
+      >
       <motion.img
         src="/Hero page/hero-dress.png"
         alt=""
@@ -236,13 +608,11 @@ const handleMouseMove = (e) => {
           }
         }}
         style={{
-          position: "absolute",
-          right: "5%",
-          bottom: 0,
-          height: "104vh",
-          zIndex: 7,
+          display: "block",
+          height: "100%",
         }}
       />
+      </div>
       <div
         style={{
           position: "absolute",
@@ -281,6 +651,7 @@ const handleMouseMove = (e) => {
 
       {/* Content */}
       <div
+        ref={contentRef}
         style={{
           position: "absolute",
           left: "7%",
@@ -466,16 +837,10 @@ const handleMouseMove = (e) => {
 }
 
 export default function Home() {
-  const [activeFilter, setActiveFilter] = useState("All");
-  const filters = ["All", "New Arrival", "Bestseller", "Limited", "Exclusive"];
   const masonRef   = useRef(null);
   const trendingRef = useRef(null);
 
-  const filtered = activeFilter === "All"
-    ? PINS
-    : PINS.filter(p => p.type === "product" && p.tag === activeFilter);
-
-  // Stagger-in masonry cards whenever the filtered set changes
+  // Stagger-in masonry cards once
   useEffect(() => {
     if (!masonRef.current) return;
     const cards = Array.from(masonRef.current.children);
@@ -488,7 +853,7 @@ export default function Home() {
         scrollTrigger: { trigger: masonRef.current, start: "top 88%", once: true },
       }
     );
-  }, [filtered]);
+  }, []);
 
   // Stagger-in trending cards once
   useEffect(() => {
@@ -507,8 +872,9 @@ export default function Home() {
 
   return (
     <div style={{ backgroundColor: C.cream, color: C.charcoal }}>
-      <MagazineIntro />
-      <AssetHero />
+      <MagazineVideoReveal>
+        <AssetHero />
+      </MagazineVideoReveal>
       <StorySection />
 
       {/* Page header */}
@@ -522,19 +888,10 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* Filter chips */}
-      <section style={{ backgroundColor: C.white, padding: "1.5rem 2.5rem", borderBottom: `1px solid rgba(192,171,140,0.2)` }}>
-        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap" }}>
-          {filters.map(f => (
-            <Chip key={f} active={activeFilter === f} onClick={() => setActiveFilter(f)}>{f}</Chip>
-          ))}
-        </div>
-      </section>
-
       {/* Masonry pin grid */}
       <section style={{ backgroundColor: C.cream, padding: "4rem 1.5rem" }}>
         <div ref={masonRef} className="r-mason" style={{ columnCount: 3, columnGap: "12px", maxWidth: "1400px", margin: "0 auto" }}>
-          {filtered.map((pin, i) => <PinCard key={i} pin={pin} />)}
+          {PINS.map((pin, i) => <PinCard key={i} pin={pin} />)}
         </div>
         <Reveal dir="bottom">
           <div style={{ textAlign: "center", marginTop: "3rem" }}>

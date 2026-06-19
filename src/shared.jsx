@@ -1,5 +1,87 @@
 import { useState, useEffect, useRef } from "react";
 
+// ─── User auth helpers ─────────────────────────────────────────────────────────
+const USER_KEY = "roudah_user_v1";
+export const isUserSignedIn = () => !!localStorage.getItem(USER_KEY);
+export const userSignIn     = (email) => {
+  localStorage.setItem(USER_KEY, email);
+  window.dispatchEvent(new Event("roudah:auth"));
+};
+export const userSignOut    = () => {
+  localStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new Event("roudah:auth"));
+};
+
+// ─── Maintenance mode helpers ───────────────────────────────────────────────────
+// `enabled`  → hard site-wide takeover: visitors see ONLY the maintenance page.
+// `notice`   → advance heads-up (banner/popup) about a future scheduled date, site stays live.
+const MAINTENANCE_KEY = "roudah_maintenance_v1";
+const MAINTENANCE_DEFAULT = {
+  enabled: false,
+  message: "We're currently performing scheduled maintenance. We'll be back online shortly.",
+  notice: {
+    enabled: false,
+    type: "banner", // "banner" | "popup"
+    message: "We'll be undergoing scheduled maintenance.",
+    date: "",
+    time: "",
+  },
+};
+
+export const getMaintenance = () => {
+  try {
+    const raw = localStorage.getItem(MAINTENANCE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return {
+      ...MAINTENANCE_DEFAULT,
+      ...parsed,
+      notice: { ...MAINTENANCE_DEFAULT.notice, ...(parsed.notice || {}) },
+    };
+  } catch {
+    return MAINTENANCE_DEFAULT;
+  }
+};
+
+export const setMaintenance = (settings) => {
+  localStorage.setItem(MAINTENANCE_KEY, JSON.stringify(settings));
+  window.dispatchEvent(new Event("roudah:maintenance"));
+};
+
+export const BANNER_HEIGHT = 38;
+
+export function useMaintenance() {
+  const [m, setM] = useState(getMaintenance());
+  useEffect(() => {
+    const update = () => setM(getMaintenance());
+    window.addEventListener("roudah:maintenance", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("roudah:maintenance", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
+  return m;
+}
+
+export function useBannerOffset() {
+  const m = useMaintenance();
+  return !m.enabled && m.notice.enabled && m.notice.type === "banner" ? BANNER_HEIGHT : 0;
+}
+
+export function formatNoticeDate(dateStr, timeStr) {
+  if (!dateStr) return "";
+  const d = new Date(`${dateStr}T${timeStr || "00:00"}`);
+  if (isNaN(d.getTime())) return "";
+  const dateLabel = d.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const timeLabel = timeStr ? d.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }) : "";
+  return timeLabel ? `${dateLabel} at ${timeLabel}` : dateLabel;
+}
+
+export function composeNoticeMessage(notice) {
+  const dateLabel = formatNoticeDate(notice.date, notice.time);
+  return dateLabel ? `${notice.message} Scheduled for ${dateLabel}.` : notice.message;
+}
+
 // ─── Colour palette ────────────────────────────────────────────────────────────
 export const C = {
   cream:      "#EDE8DF",
@@ -133,6 +215,83 @@ export const TRENDING = [
   { file: WA(13), fallback: "t6", name: "Al Rimal Floral Abaya",   price: "R 7,450", tag: "Limited"     },
 ];
 
+// ─── Product catalog (shared source of truth: storefront + admin) ─────────────
+const PRODUCTS_KEY = "roudah_products_v1";
+
+export const PRODUCT_CATEGORIES = ["Abayas", "Capes", "Gowns", "Sets", "Wraps"];
+export const PRODUCT_TAGS = ["New Arrival", "Bestseller", "Limited", "Exclusive"];
+
+const PRODUCTS_SEED = [
+  { id: 1,  file: WA(1),  name: "Noor Embroidered Abaya",    fabric: "Forest Linen · Floral beadwork",   price: 6200, tag: "Bestseller",  category: "Abayas", saves: 1243, stock: 2 },
+  { id: 2,  file: WA(13), name: "Al Rimal Floral Abaya",     fabric: "Ivory Organza · Hand-stitched",    price: 7450, tag: "Limited",     category: "Abayas", saves: 632,  stock: 1 },
+  { id: 3,  file: WA(8),  name: "Al Rimal Desert Abaya",     fabric: "Sand Crepe · Velvet trim",         price: 5200, tag: "New Arrival", category: "Abayas", saves: 891,  stock: 4 },
+  { id: 4,  file: WA(15), name: "Garden Hour Abaya",         fabric: "Sage Linen · Embroidered hem",     price: 4600, tag: "Bestseller",  category: "Abayas", saves: 1104, stock: 3 },
+  { id: 5,  file: WA(25), name: "Layla Satin Abaya",         fabric: "Taupe Charmeuse · Bell cuff",      price: 3950, tag: "Bestseller",  category: "Abayas", saves: 1089, stock: 3 },
+  { id: 6,  file: WA(7),  name: "Midnight Abaya",            fabric: "Black Crepe · Gold chain detail",  price: 5800, tag: "Exclusive",   category: "Abayas", saves: 734,  stock: 2 },
+  { id: 7,  file: WA(10), name: "Rose Petal Abaya",          fabric: "Dusty Rose Silk · Pearl cuffs",    price: 5900, tag: "New Arrival", category: "Abayas", saves: 677,  stock: 4 },
+  { id: 8,  file: WA(0),  name: "The Sahara Cape",           fabric: "Sage Silk · Hand-embroidered",     price: 4850, tag: "New Arrival", category: "Capes",  saves: 847,  stock: 3 },
+  { id: 9,  file: WA(2),  name: "Crescent Cape",             fabric: "Ivory Crepe · Pearl buttons",      price: 3800, tag: "New Arrival", category: "Capes",  saves: 562,  stock: 5 },
+  { id: 10, file: WA(11), name: "Dusk Cape in Blush",        fabric: "Blush Silk · Crystal fringe",      price: 4200, tag: "Limited",     category: "Capes",  saves: 489,  stock: 2 },
+  { id: 11, file: WA(12), name: "Azalea Evening Cape",       fabric: "Lilac Organza · Crystal hem",      price: 4300, tag: "Limited",     category: "Capes",  saves: 531,  stock: 2 },
+  { id: 12, file: WA(4),  name: "The Oasis Gown",            fabric: "Pearl Organza · Veil overlay",     price: 9200, tag: "Exclusive",   category: "Gowns",  saves: 1542, stock: 1 },
+  { id: 13, file: WA(9),  name: "Blossom Evening Gown",      fabric: "Blush Tulle · Floral appliqué",    price: 8400, tag: "Limited",     category: "Gowns",  saves: 923,  stock: 2 },
+  { id: 14, file: WA(16), name: "Saffron Column Gown",       fabric: "Marigold Satin · Crystal trim",    price: 7800, tag: "Exclusive",   category: "Gowns",  saves: 811,  stock: 3 },
+  { id: 15, file: WA(14), name: "Desert Sand Gown",          fabric: "Warm Ivory Crepe · Beaded neck",   price: 8800, tag: "Exclusive",   category: "Gowns",  saves: 1021, stock: 1 },
+  { id: 16, file: WA(18), name: "The Velvet Co-ord",         fabric: "Chocolate Crepe · Beaded trim",    price: 5600, tag: "New Arrival", category: "Sets",   saves: 521,  stock: 4 },
+  { id: 17, file: WA(27), name: "The Ivory Cape Set",        fabric: "Ivory Satin · Gold tassel tie",    price: 6900, tag: "New Arrival", category: "Sets",   saves: 728,  stock: 5 },
+  { id: 18, file: WA(22), name: "Pearl Two-Piece Set",       fabric: "Pearl Crepe · Veil panel",         price: 6100, tag: "Bestseller",  category: "Sets",   saves: 944,  stock: 2 },
+  { id: 19, file: WA(5),  name: "The Lace Overlay Set",      fabric: "Ivory Lace · Silk underlay",       price: 7200, tag: "Exclusive",   category: "Sets",   saves: 856,  stock: 2 },
+  { id: 20, file: WA(19), name: "Marigold Embroidered Set",  fabric: "Golden Crepe · Hand-beaded",       price: 6500, tag: "Limited",     category: "Sets",   saves: 643,  stock: 3 },
+  { id: 21, file: WA(20), name: "Dusk Wrap in Mocha",        fabric: "Duchess Satin · Crystal fringe",   price: 5300, tag: "Limited",     category: "Wraps",  saves: 412,  stock: 0 },
+  { id: 22, file: WA(3),  name: "The Oasis Silhouette",      fabric: "Pearl Crepe · Veil overlay",       price: 8100, tag: "Exclusive",   category: "Wraps",  saves: 934,  stock: 2 },
+  { id: 23, file: WA(24), name: "Amber Wrap Coat",           fabric: "Camel Wool · Silk lining",         price: 6700, tag: "New Arrival", category: "Wraps",  saves: 603,  stock: 3 },
+  { id: 24, file: WA(17), name: "Sage Kimono Wrap",          fabric: "Sage Silk · Hand-dyed",            price: 3600, tag: "Bestseller",  category: "Wraps",  saves: 789,  stock: 5 },
+];
+
+export const formatPrice = (price) => `R ${Number(price).toLocaleString()}`;
+
+export const getScarcity = (stock) => {
+  if (stock === 0) return "Sold Out";
+  if (stock === 1) return "Last piece";
+  return `Only ${stock} left`;
+};
+
+export const getProducts = () => {
+  try {
+    const raw = localStorage.getItem(PRODUCTS_KEY);
+    return raw ? JSON.parse(raw) : PRODUCTS_SEED;
+  } catch {
+    return PRODUCTS_SEED;
+  }
+};
+
+export const setProductsStore = (list) => {
+  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list));
+  window.dispatchEvent(new Event("roudah:products"));
+};
+
+export function useProducts() {
+  const [products, setLocal] = useState(getProducts());
+
+  useEffect(() => {
+    const update = () => setLocal(getProducts());
+    window.addEventListener("roudah:products", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("roudah:products", update);
+      window.removeEventListener("storage", update);
+    };
+  }, []);
+
+  const update = (updater) => {
+    const next = typeof updater === "function" ? updater(getProducts()) : updater;
+    setProductsStore(next);
+    setLocal(next);
+  };
+
+  return [products, update];
+}
+
 // ─── Small UI ─────────────────────────────────────────────────────────────────
 export function Chip({ children, active, onClick }) {
   const [hov, setHov] = useState(false);
@@ -180,6 +339,7 @@ export function PinCard({ pin }) {
 
   const tagBg = pin.tag === "Limited" ? C.terracotta : pin.tag === "Exclusive" ? C.espresso : C.sage;
   return (
+    <div style={{ breakInside: "avoid", marginBottom: "12px" }}>
     <div ref={cardRef}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => { setHov(false); setTilt({ x: 0, y: 0 }); }}
@@ -191,7 +351,7 @@ export function PinCard({ pin }) {
         setTilt({ x: y * 6, y: x * -6 });
       }}
       style={{
-        position: "relative", breakInside: "avoid", marginBottom: "12px", overflow: "hidden", cursor: "pointer",
+        position: "relative", overflow: "hidden", cursor: "pointer",
         transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${hov ? 1.02 : 1})`,
         transition: hov ? "transform 80ms ease" : "transform 700ms cubic-bezier(.22,1,.36,1)",
         boxShadow: hov ? "0 24px 56px rgba(22,16,10,0.24)" : "none",
@@ -213,6 +373,7 @@ export function PinCard({ pin }) {
           <p style={{ color: "rgba(255,255,255,0.65)", fontSize: "0.58rem", fontStyle: "italic", fontFamily: "Georgia,serif" }}>{pin.scarcity}</p>
         </div>
       </div>
+    </div>
     </div>
   );
 }
